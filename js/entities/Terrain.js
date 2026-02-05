@@ -19,7 +19,7 @@ export class Terrain {
 
     getHeight(x) {
         const hole = this.isInHole(x);
-        if (hole) return this.baseHeight + 600;
+        if (hole) return this.baseHeight + 350;
 
         const flatMask = (Math.sin(x * 0.0003) + 1) / 2;
         const isFlatZone = flatMask > 0.9;
@@ -47,35 +47,36 @@ export class Terrain {
     }
 
     draw(ctx, cameraX, width, height) {
-        ctx.fillStyle = "#2c3e50";
         const startX = Math.floor(cameraX / this.step) * this.step - this.step;
         const endX = cameraX + width + this.step;
 
+        ctx.fillStyle = "#4e342e";
         ctx.beginPath();
         ctx.moveTo(startX, height);
+
         for (let x = startX; x <= endX; x += this.step) {
             const y = this.getHeight(x);
-            if (y > this.baseHeight + 400) ctx.lineTo(x, height);
-            else ctx.lineTo(x, y);
+            if (y > this.baseHeight + 300) {
+                ctx.lineTo(x, height);
+                ctx.moveTo(x + this.step, height);
+            } else {
+                ctx.lineTo(x, y);
+            }
         }
         ctx.lineTo(endX, height);
         ctx.fill();
 
-        ctx.lineWidth = 5;
         ctx.strokeStyle = "#2ecc71";
+        ctx.lineWidth = 8;
         ctx.beginPath();
-        let drawing = false;
         for (let x = startX; x <= endX; x += this.step) {
             const y = this.getHeight(x);
-            if (y < this.baseHeight + 400) {
-                if (!drawing) {
+            if (y <= this.baseHeight + 300) {
+                if (x === startX || this.getHeight(x - this.step) > this.baseHeight + 300) {
                     ctx.moveTo(x, y);
-                    drawing = true;
                 } else {
                     ctx.lineTo(x, y);
                 }
-            } else {
-                drawing = false;
             }
         }
         ctx.stroke();

@@ -59,7 +59,7 @@ export class Game {
             
             const rand = Math.random();
             if (rand < 0.2) {
-                this.terrain.addHole(currentX, 200 + Math.random() * 150);
+                this.terrain.addHole(currentX, 220);
                 currentX += 300;
             } else if (rand < 0.5) {
                 const types = ['STUMP', 'ROCK', 'LOG'];
@@ -102,7 +102,7 @@ export class Game {
 
         this.entities.forEach(z => {
             if (z instanceof Zombie) {
-                if (z.isFallingInHole && z.y > this.terrain.baseHeight + 200) {
+                if (z.isFallingInHole && z.y > this.terrain.baseHeight + 150) {
                     z.active = false;
                     this.player.money -= 10;
                     this.addFloatingText("-$10", z.x, z.y - 100, "#e74c3c");
@@ -126,14 +126,44 @@ export class Game {
         });
 
         this.obstacles.forEach(o => {
-            const dx = Math.abs(this.player.x - o.x);
-            const dy = Math.abs(this.player.y - o.y);
-            if (dx < (this.player.width + o.width) / 2 && dy < (this.player.height + o.height) / 2) {
-                if (this.player.x < o.x) {
-                    this.player.x = o.x - (this.player.width + o.width) / 2;
+            const overlapX = (this.player.width + o.width) / 2 - Math.abs(this.player.x - o.x);
+            const overlapY = (this.player.height + o.height) / 2 - Math.abs(this.player.y - o.y);
+
+            if (overlapX > 0 && overlapY > 0) {
+                if (overlapX < overlapY) {
+                    if (this.player.x < o.x) {
+                        this.player.x -= overlapX;
+                    } else {
+                        this.player.x += overlapX;
+                    }
                     this.player.vx = 0;
                 } else {
-                    this.player.x = o.x + (this.player.width + o.width) / 2;
+                    if (this.player.y < o.y) {
+                        this.player.y -= overlapY;
+                        this.player.vy = 0;
+                        this.player.isGrounded = true;
+                    } else {
+                        this.player.y += overlapY;
+                        this.player.vy = 0;
+                    }
+                }
+            }
+        });
+
+        this.terrain.holes.forEach(hole => {
+            const playerLeft = this.player.x - this.player.width / 2;
+            const playerRight = this.player.x + this.player.width / 2;
+            const playerCenterY = this.player.y;
+
+            const groundLeftY = this.terrain.getHeight(hole.x - 1);
+            const groundRightY = this.terrain.getHeight(hole.x + hole.width + 1);
+
+            if (playerCenterY > Math.min(groundLeftY, groundRightY) - 20) {
+                if (this.player.x < hole.x && playerRight > hole.x) {
+                    this.player.x = hole.x - this.player.width / 2;
+                    this.player.vx = 0;
+                } else if (this.player.x > hole.x + hole.width && playerLeft < hole.x + hole.width) {
+                    this.player.x = hole.x + hole.width + this.player.width / 2;
                     this.player.vx = 0;
                 }
             }
