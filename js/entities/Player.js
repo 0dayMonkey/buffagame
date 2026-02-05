@@ -16,9 +16,13 @@ export class Player extends Character {
         this.maxFuel = 100;
         this.money = 0;
         this.canDropBrain = true;
+        this.lives = 3;
+        this.invincibility = 0;
     }
 
     update(dt, input, canvas, game, terrain) {
+        if (this.invincibility > 0) this.invincibility--;
+
         const moveLeft = input.isPressed('KeyA') || input.isPressed('ArrowLeft');
         const moveRight = input.isPressed('KeyD') || input.isPressed('ArrowRight');
 
@@ -87,8 +91,10 @@ export class Player extends Character {
     }
 
     _render(ctx) {
+        if (this.invincibility % 10 > 5) return;
+        
+        ctx.save();
         ctx.scale(this.scaleX, this.scaleY);
-
         ctx.fillStyle = "#2ecc71";
         ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
 
@@ -105,6 +111,7 @@ export class Player extends Character {
             ctx.fillStyle = "#f1c40f";
             ctx.fillRect(-this.width / 2, -this.height / 2 - 15, (this.charge / this.maxCharge) * this.width, 6);
         }
+        ctx.restore();
 
         ctx.save();
         ctx.translate(0, -10);

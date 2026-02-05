@@ -23,9 +23,9 @@ export class Game {
         
         this.lastTime = 0;
         this.ratio = 2.35;
-        
         this.cameraX = 0;
         this.lastSpotX = 0; 
+        this.gameOver = false;
         
         this.initCanvas();
         this.terrain = new Terrain(this.canvas.height - 100);
@@ -33,7 +33,6 @@ export class Game {
         this.entities.push(this.player);
         
         this.generateMapSegment(0);
-
         window.addEventListener('resize', () => this.handleResize());
     }
 
@@ -52,14 +51,12 @@ export class Game {
 
     generateMapSegment(startX) {
         let currentX = Math.max(startX, this.lastSpotX + 400); 
-        
         for(let i = 0; i < 3; i++) {
             const distance = 500 + Math.random() * 500;
             currentX += distance;
-            
             const rand = Math.random();
             if (rand < 0.2) {
-                this.terrain.addHole(currentX, 220);
+                this.terrain.addHole(currentX, 250);
                 currentX += 300;
             } else if (rand < 0.5) {
                 const types = ['STUMP', 'ROCK', 'LOG'];
@@ -72,7 +69,6 @@ export class Game {
                 this.spots.push(spot);
                 this.entities.push(new Zombie(currentX, groundY - 50));
             }
-            
             this.lastSpotX = currentX;
         }
     }
@@ -86,6 +82,8 @@ export class Game {
     }
 
     checkCollisions() {
+        if (this.gameOver) return;
+
         this.projectiles.forEach(p => {
             if (!p.active || p.connectedZombie || p.isStuck) return;
             this.entities.forEach(z => {
@@ -102,6 +100,15 @@ export class Game {
 
         this.entities.forEach(z => {
             if (z instanceof Zombie) {
+                const distToPlayer = Math.sqrt((this.player.x - z.x)**2 + (this.player.y - z.y)**2);
+                if (distToPlayer < 40 && z.state !== 'CAPTURED' && z.state !== 'HIDDEN' && this.player.invincibility === 0) {
+                    this.player.lives--;
+                    this.player.invincibility = 60;
+                    this.addFloatingText("-1 ❤️", this.player.x, this.player.y - 60, "#e74c3c");
+                    this.player.vx = (this.player.x - z.x) * 0.8;
+                    this.player.vy = -5;
+                }
+
                 if (z.isFallingInHole && z.y > this.terrain.baseHeight + 150) {
                     z.active = false;
                     this.player.money -= 10;
@@ -125,6 +132,24 @@ export class Game {
             }
         });
 
+        if (this.player.isFallingInHole && this.player.y > this.terrain.baseHeight + 150) {
+            this.player.lives--;
+            if (this.player.lives > 0) {
+                this.addFloatingText("-1 ❤️", this.player.x, this.player.y - 100, "#e74c3c");
+                const safeX = this.cameraX + 150;
+                this.player.x = safeX;
+                this.player.y = this.terrain.getHeight(safeX) - 100;
+                this.player.vx = 0;
+                this.player.vy = 0;
+                this.player.invincibility = 40;
+            }
+        }
+
+        if (this.player.lives <= 0 && !this.gameOver) {
+            this.gameOver = true;
+            setTimeout(() => location.reload(), 2000);
+        }
+
         this.obstacles.forEach(o => {
             const overlapX = (this.player.width + o.width) / 2 - Math.abs(this.player.x - o.x);
             const overlapY = (this.player.height + o.height) / 2 - Math.abs(this.player.y - o.y);
@@ -144,12 +169,20 @@ export class Game {
             }
         });
 
-        const playerTopY = this.player.y - this.player.height / 2;
+        const checkDist = 18;
+        const leftWallY = this.terrain.getHeight(this.player.x - checkDist);
+        const rightWallY = this.terrain.getHeight(this.player.x + checkDist);
+        const pFeetY = this.player.y + this.player.height / 2;
+
+        if (!this.player.isFallingInHole) {
+            if (leftWallY < pFeetY - 15) { this.player.x += 2; this.player.vx = 0; }
+            if (rightWallY < pFeetY - 15) { this.player.x -= 2; this.player.vx = 0; }
+        }
+
         this.terrain.holes.forEach(hole => {
-            if (playerTopY > this.terrain.baseHeight) {
+            if (this.player.y > this.terrain.baseHeight + 10) {
                 const playerLeft = this.player.x - this.player.width / 2;
                 const playerRight = this.player.x + this.player.width / 2;
-
                 if (this.player.x < hole.x && playerRight > hole.x) {
                     this.player.x = hole.x - this.player.width / 2;
                     this.player.vx = 0;
@@ -172,6 +205,7 @@ export class Game {
     }
 
     update(dt) {
+        if (this.gameOver) return;
         const targetX = this.player.x - this.canvas.width * 0.3;
         if (targetX > this.cameraX) {
             this.cameraX += (targetX - this.cameraX) * 0.1;
@@ -222,14 +256,29 @@ export class Game {
         this.texts.forEach(t => t.draw(this.ctx));
         this.ctx.restore(); 
         this._renderUI();
+        if (this.gameOver) this._renderGameOver();
     }
 
     _renderUI() {
         this.ctx.fillStyle = "white";
         this.ctx.font = "bold 24px Arial";
         this.ctx.fillText(`$${this.player.money}`, 30, 50);
+        
+        let hearts = "";
+        for(let i = 0; i < this.player.lives; i++) hearts += "❤️";
+        this.ctx.fillText(hearts, 30, 85);
+
         this.ctx.font = "16px Arial";
         this.ctx.fillStyle = "#bdc3c7";
-        this.ctx.fillText("APPUYEZ SUR [E] POUR POSER UN CERVEAU | DISTANCE: " + Math.floor(this.player.x / 100) + "m", 30, 80);
+        this.ctx.fillText("DISTANCE: " + Math.floor(this.player.x / 100) + "m", 30, 115);
+    }
+
+    _renderGameOver() {
+        this.ctx.fillStyle = "rgba(0,0,0,0.85)";
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.fillStyle = "white";
+        this.ctx.font = "bold 60px Arial";
+        this.ctx.textAlign = "center";
+        this.ctx.fillText("GAME OVER", this.canvas.width / 2, this.canvas.height / 2);
     }
 }

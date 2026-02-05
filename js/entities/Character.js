@@ -23,20 +23,12 @@ export class Character extends Entity {
         if (groundY > terrain.baseHeight + 200) {
             this.isFallingInHole = true;
             this.isGrounded = false;
-            
-            if (feetY >= groundY - 50) {
-                this.y = groundY - 50 - this.height / 2;
-                this.vy = -20;
-                this.scaleX = 1.6;
-                this.scaleY = 0.4;
-            }
         } else {
             this.isFallingInHole = false;
-            if (feetY >= groundY - 2) {
+            if (feetY >= groundY - 5) {
                 this.y = groundY - this.height / 2;
                 if (this.vy > 0) this.vy = 0;
                 this.isGrounded = true;
-                
                 const slope = terrain.getSlopeAngle(this.x);
                 this.angle += (slope - this.angle) * 0.1;
             } else {
