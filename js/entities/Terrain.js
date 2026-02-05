@@ -49,11 +49,9 @@ export class Terrain {
     draw(ctx, cameraX, width, height) {
         const startX = Math.floor(cameraX / this.step) * this.step - this.step;
         const endX = cameraX + width + this.step;
-
         ctx.fillStyle = "#4e342e";
         ctx.beginPath();
         ctx.moveTo(startX, height);
-
         for (let x = startX; x <= endX; x += this.step) {
             const y = this.getHeight(x);
             if (y > this.baseHeight + 300) {
@@ -65,7 +63,6 @@ export class Terrain {
         }
         ctx.lineTo(endX, height);
         ctx.fill();
-
         ctx.strokeStyle = "#2ecc71";
         ctx.lineWidth = 10;
         ctx.beginPath();

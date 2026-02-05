@@ -18,7 +18,7 @@ export class Zombie extends Character {
         this.stealthTimer = 0;
         this.eatingTimer = 0;
         this.offScreenTimer = 0;
-        this.pullSpeed = 25;
+        this.pullSpeed = 13;
         this.targetBrain = null;
         this.wobble = 0;
         this.hasEscaped = false;

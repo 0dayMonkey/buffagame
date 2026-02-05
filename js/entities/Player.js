@@ -92,7 +92,6 @@ export class Player extends Character {
 
     _render(ctx) {
         if (this.invincibility % 10 > 5) return;
-        
         ctx.save();
         ctx.scale(this.scaleX, this.scaleY);
         ctx.fillStyle = "#2ecc71";
