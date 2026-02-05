@@ -19,8 +19,11 @@ export class Player extends Character {
     }
 
     update(dt, input, canvas, game, terrain) {
-        if (input.isPressed('KeyA') || input.isPressed('ArrowLeft')) this.vx -= this.speed;
-        if (input.isPressed('KeyD') || input.isPressed('ArrowRight')) this.vx += this.speed;
+        const moveLeft = input.isPressed('KeyA') || input.isPressed('ArrowLeft');
+        const moveRight = input.isPressed('KeyD') || input.isPressed('ArrowRight');
+
+        if (moveLeft) this.vx -= this.speed;
+        if (moveRight) this.vx += this.speed;
         
         const isJumpInput = input.isPressed('Space') || input.isPressed('KeyW');
 
@@ -28,9 +31,13 @@ export class Player extends Character {
             if (this.isGrounded && !this.wasJumpPressed) {
                 this.vy = this.jumpForce;
                 this.isGrounded = false;
+                this.scaleX = 0.7;
+                this.scaleY = 1.4;
             } else if (!this.isGrounded && this.fuel > 0) {
                 this.vy += this.jetpackThrust;
                 this.fuel -= 0.6;
+                if (moveLeft) this.vx -= 0.25;
+                if (moveRight) this.vx += 0.25;
             }
             this.wasJumpPressed = true;
         } else {
@@ -80,6 +87,8 @@ export class Player extends Character {
     }
 
     _render(ctx) {
+        ctx.scale(this.scaleX, this.scaleY);
+
         ctx.fillStyle = "#2ecc71";
         ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
 

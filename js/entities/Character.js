@@ -8,6 +8,8 @@ export class Character extends Entity {
         this.isGrounded = false;
         this.gravity = 0.28;
         this.friction = 0.94;
+        this.scaleX = 1;
+        this.scaleY = 1;
     }
 
     applyPhysics(terrain) {
@@ -19,6 +21,12 @@ export class Character extends Entity {
 
         if (feetY >= groundY) {
             const slope = terrain.getSlopeAngle(this.x);
+            
+            if (!this.isGrounded && this.vy > 2) {
+                this.scaleX = 1.3;
+                this.scaleY = 0.7;
+            }
+
             if (this.vy > 0) {
                 this.y = groundY - this.height / 2;
                 this.vy = 0;
@@ -28,6 +36,9 @@ export class Character extends Entity {
         } else {
             this.isGrounded = false;
         }
+
+        this.scaleX += (1 - this.scaleX) * 0.15;
+        this.scaleY += (1 - this.scaleY) * 0.15;
     }
 
     checkBounds(canvas) {

@@ -18,7 +18,7 @@ export class Zombie extends Character {
         this.stealthTimer = 0;
         this.eatingTimer = 0;
         this.offScreenTimer = 0;
-        this.pullSpeed = 6;
+        this.pullSpeed = 25;
         this.targetBrain = null;
         this.wobble = 0;
         this.hasEscaped = false;
@@ -115,6 +115,8 @@ export class Zombie extends Character {
 
     _render(ctx) {
         if (this.state === Zombie.STATES.HIDDEN) return;
+
+        ctx.scale(this.scaleX, this.scaleY);
         
         ctx.fillStyle = this.state === Zombie.STATES.FLEEING ? "#e74c3c" : "#9b59b6";
         if (this.state === Zombie.STATES.PEEKING) {
