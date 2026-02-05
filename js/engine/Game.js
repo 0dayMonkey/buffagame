@@ -144,9 +144,9 @@ export class Game {
             }
         });
 
-        const pFeetY = this.player.y + this.player.height / 2;
+        const playerTopY = this.player.y - this.player.height / 2;
         this.terrain.holes.forEach(hole => {
-            if (pFeetY > this.terrain.baseHeight + 20) {
+            if (playerTopY > this.terrain.baseHeight) {
                 const playerLeft = this.player.x - this.player.width / 2;
                 const playerRight = this.player.x + this.player.width / 2;
 

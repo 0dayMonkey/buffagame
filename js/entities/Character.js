@@ -32,7 +32,7 @@ export class Character extends Entity {
             }
         } else {
             this.isFallingInHole = false;
-            if (feetY >= groundY) {
+            if (feetY >= groundY - 2) {
                 this.y = groundY - this.height / 2;
                 if (this.vy > 0) this.vy = 0;
                 this.isGrounded = true;
