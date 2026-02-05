@@ -1,6 +1,5 @@
 import { Character } from './Character.js';
 import { Projectile } from './Projectile.js';
-import { Brain } from './Brain.js';
 
 export class Player extends Character {
     constructor(x, y) {
@@ -48,7 +47,6 @@ export class Player extends Character {
         }
 
         if (input.isPressed('KeyE') && this.canDropBrain && this.isGrounded) {
-            game.brains.push(new Brain(this.x, this.y));
             this.canDropBrain = false;
             setTimeout(() => this.canDropBrain = true, 2000);
         }
@@ -88,24 +86,20 @@ export class Player extends Character {
 
     _render(ctx) {
         ctx.scale(this.scaleX, this.scaleY);
-
         ctx.fillStyle = "#2ecc71";
         ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
-
         if (this.fuel < this.maxFuel) {
             ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
             ctx.fillRect(-this.width / 2, -this.height / 2 - 25, this.width, 6);
             ctx.fillStyle = this.fuel > 20 ? "#3498db" : "#e74c3c";
             ctx.fillRect(-this.width / 2, -this.height / 2 - 25, (this.fuel / this.maxFuel) * this.width, 6);
         }
-
         if (this.isCharging) {
             ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
             ctx.fillRect(-this.width / 2, -this.height / 2 - 15, this.width, 6);
             ctx.fillStyle = "#f1c40f";
             ctx.fillRect(-this.width / 2, -this.height / 2 - 15, (this.charge / this.maxCharge) * this.width, 6);
         }
-
         ctx.save();
         ctx.translate(0, -10);
         ctx.rotate(this.armAngle - this.angle);

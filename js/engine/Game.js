@@ -6,6 +6,7 @@ import { Spot } from '../entities/Spot.js';
 import { Brain } from '../entities/Brain.js';
 import { FloatingText } from '../entities/FloatingText.js';
 import { Terrain } from '../entities/Terrain.js';
+import { Obstacle } from '../entities/Obstacle.js';
 
 export class Game {
     constructor(canvasId) {
@@ -18,6 +19,7 @@ export class Game {
         this.spots = [];
         this.brains = [];
         this.texts = [];
+        this.obstacles = [];
         
         this.lastTime = 0;
         this.ratio = 2.35;
@@ -49,17 +51,27 @@ export class Game {
     }
 
     generateMapSegment(startX) {
-        let currentX = Math.max(startX, this.lastSpotX + 300); 
+        let currentX = Math.max(startX, this.lastSpotX + 400); 
         
         for(let i = 0; i < 3; i++) {
-            const distance = 400 + Math.random() * 400;
+            const distance = 500 + Math.random() * 500;
             currentX += distance;
             
-            const groundY = this.terrain.getHeight(currentX);
-            const spot = new Spot(currentX, groundY);
-            this.spots.push(spot);
-            
-            this.entities.push(new Zombie(currentX, groundY - 50));
+            const rand = Math.random();
+            if (rand < 0.2) {
+                this.terrain.addHole(currentX, 200 + Math.random() * 150);
+                currentX += 300;
+            } else if (rand < 0.5) {
+                const types = ['STUMP', 'ROCK', 'LOG'];
+                const type = types[Math.floor(Math.random() * types.length)];
+                const groundY = this.terrain.getHeight(currentX);
+                this.obstacles.push(new Obstacle(currentX, groundY, type));
+            } else {
+                const groundY = this.terrain.getHeight(currentX);
+                const spot = new Spot(currentX, groundY);
+                this.spots.push(spot);
+                this.entities.push(new Zombie(currentX, groundY - 50));
+            }
             
             this.lastSpotX = currentX;
         }
@@ -90,6 +102,11 @@ export class Game {
 
         this.entities.forEach(z => {
             if (z instanceof Zombie) {
+                if (z.isFallingInHole && z.y > this.terrain.baseHeight + 200) {
+                    z.active = false;
+                    this.player.money -= 10;
+                    this.addFloatingText("-$10", z.x, z.y - 100, "#e74c3c");
+                }
                 if (z.state === 'CAPTURED') {
                     const dist = Math.sqrt((z.x - this.player.x)**2 + (z.y - this.player.y)**2);
                     if (dist < 50) {
@@ -107,15 +124,27 @@ export class Game {
                 }
             }
         });
+
+        this.obstacles.forEach(o => {
+            const dx = Math.abs(this.player.x - o.x);
+            const dy = Math.abs(this.player.y - o.y);
+            if (dx < (this.player.width + o.width) / 2 && dy < (this.player.height + o.height) / 2) {
+                if (this.player.x < o.x) {
+                    this.player.x = o.x - (this.player.width + o.width) / 2;
+                    this.player.vx = 0;
+                } else {
+                    this.player.x = o.x + (this.player.width + o.width) / 2;
+                    this.player.vx = 0;
+                }
+            }
+        });
     }
 
     loop(timestamp) {
         if (!this.lastTime) this.lastTime = timestamp;
         let dt = timestamp - this.lastTime;
         this.lastTime = timestamp;
-
         if (dt > 100) dt = 16;
-
         this.update(dt);
         this.render();
         requestAnimationFrame((t) => this.loop(t));
@@ -127,13 +156,13 @@ export class Game {
             this.cameraX += (targetX - this.cameraX) * 0.1;
         }
 
-        if (this.cameraX + this.canvas.width > this.lastSpotX - 200) {
+        if (this.cameraX + this.canvas.width > this.lastSpotX - 400) {
             this.generateMapSegment(this.lastSpotX);
         }
 
         const deleteThreshold = this.cameraX - 1000;
         this.spots = this.spots.filter(s => s.x > deleteThreshold);
-
+        this.obstacles = this.obstacles.filter(o => o.x > deleteThreshold);
         this.entities = this.entities.filter(e => e.active !== false);
         this.projectiles = this.projectiles.filter(p => p.active !== false);
         this.brains = this.brains.filter(b => b.active !== false);
@@ -152,39 +181,29 @@ export class Game {
 
     render() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        
         this.ctx.save();
         this.ctx.translate(-this.cameraX, 0);
-
         this.terrain.draw(this.ctx, this.cameraX, this.canvas.width, this.canvas.height);
-
         this.spots.forEach(s => s.draw(this.ctx));
-        
+        this.obstacles.forEach(o => o.draw(this.ctx));
         this.brains.forEach(b => b.draw(this.ctx));
-        
         this.projectiles.forEach(p => {
             this.ctx.beginPath();
             this.ctx.strokeStyle = "#333";
             this.ctx.lineWidth = 2;
-            
             const gunLen = 45;
             const startX = this.player.x + Math.cos(this.player.armAngle) * gunLen;
             const startY = (this.player.y - 10) + Math.sin(this.player.armAngle) * gunLen;
             const endX = p.x;
             const endY = p.y;
-            
             this.ctx.moveTo(startX, startY);
             this.ctx.lineTo(endX, endY);
             this.ctx.stroke();
-            
             p.draw(this.ctx);
         });
-        
         this.entities.forEach(e => e.draw(this.ctx));
         this.texts.forEach(t => t.draw(this.ctx));
-
         this.ctx.restore(); 
-
         this._renderUI();
     }
 
@@ -192,7 +211,6 @@ export class Game {
         this.ctx.fillStyle = "white";
         this.ctx.font = "bold 24px Arial";
         this.ctx.fillText(`$${this.player.money}`, 30, 50);
-        
         this.ctx.font = "16px Arial";
         this.ctx.fillStyle = "#bdc3c7";
         this.ctx.fillText("APPUYEZ SUR [E] POUR POSER UN CERVEAU | DISTANCE: " + Math.floor(this.player.x / 100) + "m", 30, 80);

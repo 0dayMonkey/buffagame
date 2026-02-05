@@ -23,14 +23,12 @@ export class Noise {
         const v = this.fade(y);
         const A = this.perm[X] + Y, AA = this.perm[A], AB = this.perm[A + 1];
         const B = this.perm[X + 1] + Y, BA = this.perm[B], BB = this.perm[B + 1];
-
         const grad = (hash, x, y) => {
             const h = hash & 15;
             const u = h < 8 ? x : y;
             const v = h < 4 ? y : h === 12 || h === 14 ? x : 0;
             return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
         };
-
         return this.lerp(v, this.lerp(u, grad(this.perm[AA], x, y), grad(this.perm[BA], x - 1, y)),
             this.lerp(u, grad(this.perm[AB], x, y - 1), grad(this.perm[BB], x - 1, y - 1)));
     }

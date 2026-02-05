@@ -10,6 +10,7 @@ export class Character extends Entity {
         this.friction = 0.94;
         this.scaleX = 1;
         this.scaleY = 1;
+        this.isFallingInHole = false;
     }
 
     applyPhysics(terrain) {
@@ -19,22 +20,33 @@ export class Character extends Entity {
         const groundY = terrain.getHeight(this.x);
         const feetY = this.y + this.height / 2;
 
-        if (feetY >= groundY) {
-            const slope = terrain.getSlopeAngle(this.x);
-            
-            if (!this.isGrounded && this.vy > 2) {
-                this.scaleX = 1.3;
-                this.scaleY = 0.7;
-            }
-
-            if (this.vy > 0) {
-                this.y = groundY - this.height / 2;
-                this.vy = 0;
-            }
-            this.isGrounded = true;
-            this.angle += (slope - this.angle) * 0.1;
-        } else {
+        if (groundY > terrain.baseHeight + 400) {
+            this.isFallingInHole = true;
             this.isGrounded = false;
+            
+            if (feetY >= groundY - 50) {
+                this.y = groundY - 50 - this.height / 2;
+                this.vy = -20;
+                this.scaleX = 1.5;
+                this.scaleY = 0.5;
+            }
+        } else {
+            this.isFallingInHole = false;
+            if (feetY >= groundY) {
+                const slope = terrain.getSlopeAngle(this.x);
+                if (!this.isGrounded && this.vy > 2) {
+                    this.scaleX = 1.3;
+                    this.scaleY = 0.7;
+                }
+                if (this.vy > 0) {
+                    this.y = groundY - this.height / 2;
+                    this.vy = 0;
+                }
+                this.isGrounded = true;
+                this.angle += (slope - this.angle) * 0.1;
+            } else {
+                this.isGrounded = false;
+            }
         }
 
         this.scaleX += (1 - this.scaleX) * 0.15;

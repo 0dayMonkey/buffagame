@@ -20,18 +20,13 @@ export class Projectile extends Entity {
             this.y = this.connectedZombie.y;
             return;
         }
-
         if (this.isStuck) {
             this.stuckTimer++;
-            if (this.stuckTimer > 30) {
-                this.active = false;
-            }
+            if (this.stuckTimer > 30) this.active = false;
             return;
         }
-
         super.update(dt);
         this.angle = Math.atan2(this.vy, this.vx);
-        
         if (terrain) {
             const groundY = terrain.getHeight(this.x);
             if (this.y >= groundY && !this.isStuck) {
@@ -41,7 +36,6 @@ export class Projectile extends Entity {
                 this.vy = 0;
             }
         }
-
         if (this.x < -1000 || this.x > this.x + 5000 || (canvas && this.y > canvas.height + 1000)) {
             this.active = false;
         }
@@ -54,7 +48,6 @@ export class Projectile extends Entity {
     _render(ctx) {
         ctx.fillStyle = "#f1c40f";
         ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
-        
         ctx.fillStyle = "#bdc3c7";
         ctx.beginPath();
         ctx.moveTo(this.width / 2, -this.height);

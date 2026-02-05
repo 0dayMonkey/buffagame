@@ -19,7 +19,6 @@ export class Entity {
         this.vy += this.gravity;
         this.x += this.vx;
         this.y += this.vy;
-        
         this.angle = this.vx * 0.05;
     }
 

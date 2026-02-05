@@ -57,7 +57,6 @@ export class Zombie extends Character {
                 this.vy = 0;
                 this.wobble += 0.2;
                 this.angle = terrain.getSlopeAngle(this.x) + Math.sin(this.wobble) * 0.1;
-                
                 if (this.y <= groundY - this.height / 2) {
                     this.state = Zombie.STATES.EATING;
                     this.eatingTimer = 0;
@@ -75,7 +74,6 @@ export class Zombie extends Character {
                         this.eatingTimer++;
                         this.wobble += 0.4;
                         this.angle = Math.sin(this.wobble) * 0.05;
-                        
                         if (this.eatingTimer > 100) {
                             this.targetBrain.active = false;
                             this.state = Zombie.STATES.FLEEING;
@@ -93,7 +91,6 @@ export class Zombie extends Character {
                 this.vx = Math.sign(this.x - player.x) * 5;
                 super.update(dt);
                 this.applyPhysics(terrain);
-                
                 if (this.x < game.cameraX - 100 || this.x > game.cameraX + canvas.width + 100) {
                     this.offScreenTimer++;
                     if (this.offScreenTimer > 60) {
@@ -115,9 +112,7 @@ export class Zombie extends Character {
 
     _render(ctx) {
         if (this.state === Zombie.STATES.HIDDEN) return;
-
         ctx.scale(this.scaleX, this.scaleY);
-        
         ctx.fillStyle = this.state === Zombie.STATES.FLEEING ? "#e74c3c" : "#9b59b6";
         if (this.state === Zombie.STATES.PEEKING) {
             ctx.fillRect(-this.width / 2, -8, this.width, 8);
