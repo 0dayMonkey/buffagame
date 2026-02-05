@@ -11,7 +11,7 @@ export class Zombie extends Character {
     };
 
     constructor(x, y) {
-        super(x, y, 30, 45);
+        super(x, y, 26, 40);
         this.state = Zombie.STATES.HIDDEN;
         this.active = true;
         this.safetyDistance = 350;
@@ -41,7 +41,7 @@ export class Zombie extends Character {
                 break;
 
             case Zombie.STATES.PEEKING:
-                this.y = groundY - 10;
+                this.y = groundY - 8;
                 this.vy = 0;
                 this.angle = terrain.getSlopeAngle(this.x);
                 if (distToPlayer < this.safetyDistance) this.state = Zombie.STATES.HIDDEN;
@@ -53,7 +53,7 @@ export class Zombie extends Character {
                 break;
 
             case Zombie.STATES.EMERGING:
-                this.y -= 1.5;
+                this.y -= 1.2;
                 this.vy = 0;
                 this.wobble += 0.2;
                 this.angle = terrain.getSlopeAngle(this.x) + Math.sin(this.wobble) * 0.1;
@@ -69,7 +69,7 @@ export class Zombie extends Character {
                 if (this.targetBrain && this.targetBrain.active) {
                     if (Math.abs(this.x - this.targetBrain.x) > 10) {
                         const dir = Math.sign(this.targetBrain.x - this.x);
-                        this.vx = dir * 1.2;
+                        this.vx = dir * 1.1;
                     } else {
                         this.vx = 0;
                         this.eatingTimer++;
@@ -90,7 +90,7 @@ export class Zombie extends Character {
                 break;
 
             case Zombie.STATES.FLEEING:
-                this.vx = Math.sign(this.x - player.x) * 5.5;
+                this.vx = Math.sign(this.x - player.x) * 5;
                 super.update(dt);
                 this.applyPhysics(terrain);
                 
@@ -118,11 +118,11 @@ export class Zombie extends Character {
         
         ctx.fillStyle = this.state === Zombie.STATES.FLEEING ? "#e74c3c" : "#9b59b6";
         if (this.state === Zombie.STATES.PEEKING) {
-            ctx.fillRect(-this.width / 2, -10, this.width, 10);
+            ctx.fillRect(-this.width / 2, -8, this.width, 8);
         } else {
             ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
             ctx.fillStyle = "#2ecc71";
-            ctx.fillRect(-this.width / 2, -this.height / 2, this.width, 8);
+            ctx.fillRect(-this.width / 2, -this.height / 2, this.width, 6);
         }
     }
 }

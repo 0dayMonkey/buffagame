@@ -5,33 +5,35 @@ export class Terrain {
         this.noise = new Noise();
         this.baseHeight = baseHeight;
         this.chunkSize = 100;
-        this.step = 10; 
+        this.step = 5; 
     }
 
     getHeight(x) {
-        const flatMask = (Math.sin(x * 0.0004) + 1) / 2; 
-        const isFlatZone = flatMask > 0.88;
+        const flatMask = (Math.sin(x * 0.0003) + 1) / 2; 
+        const isFlatZone = flatMask > 0.9;
 
         if (isFlatZone) {
             return this.baseHeight;
         }
 
-        let amplitude = 280;
-        let frequency = 0.0003;
+        let amplitude = 250;
+        let frequency = 0.0002;
         let y = 0;
 
         for (let i = 0; i < 2; i++) {
             y += this.noise.noise(x * frequency, 0) * amplitude;
             amplitude *= 0.3;
-            frequency *= 2.5;
+            frequency *= 3;
         }
 
-        const blendFactor = Math.max(0, (flatMask - 0.75) * 4); 
-        return (this.baseHeight - y) * (1 - blendFactor) + this.baseHeight * blendFactor;
+        const blendFactor = Math.max(0, Math.min(1, (flatMask - 0.7) * 5)); 
+        const targetHeight = this.baseHeight - y;
+        
+        return targetHeight * (1 - blendFactor) + this.baseHeight * blendFactor;
     }
 
     getSlopeAngle(x) {
-        const delta = 15;
+        const delta = 10;
         const y1 = this.getHeight(x - delta);
         const y2 = this.getHeight(x + delta);
         return Math.atan2(y2 - y1, delta * 2);

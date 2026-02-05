@@ -4,10 +4,10 @@ export class Character extends Entity {
     constructor(x, y, width, height) {
         super(x, y, width, height);
         this.health = 100;
-        this.speed = 0.7;
+        this.speed = 0.6;
         this.isGrounded = false;
-        this.gravity = 0.22;
-        this.friction = 0.92;
+        this.gravity = 0.28;
+        this.friction = 0.94;
     }
 
     applyPhysics(terrain) {
@@ -19,12 +19,12 @@ export class Character extends Entity {
 
         if (feetY >= groundY) {
             const slope = terrain.getSlopeAngle(this.x);
-            this.y = groundY - this.height / 2;
-            
-            if (this.vy > 0) this.vy = 0;
-            
+            if (this.vy > 0) {
+                this.y = groundY - this.height / 2;
+                this.vy = 0;
+            }
             this.isGrounded = true;
-            this.angle += (slope - this.angle) * 0.15;
+            this.angle += (slope - this.angle) * 0.1;
         } else {
             this.isGrounded = false;
         }

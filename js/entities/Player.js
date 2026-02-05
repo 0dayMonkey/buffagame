@@ -4,9 +4,11 @@ import { Brain } from './Brain.js';
 
 export class Player extends Character {
     constructor(x, y) {
-        super(x, y, 40, 65);
+        super(x, y, 32, 52);
         this.armAngle = 0;
-        this.jetpackThrust = -0.55; 
+        this.jetpackThrust = -0.58; 
+        this.jumpForce = -9;
+        this.wasJumpPressed = false;
         this.charge = 0;
         this.maxCharge = 30;
         this.isCharging = false;
@@ -20,11 +22,22 @@ export class Player extends Character {
         if (input.isPressed('KeyA') || input.isPressed('ArrowLeft')) this.vx -= this.speed;
         if (input.isPressed('KeyD') || input.isPressed('ArrowRight')) this.vx += this.speed;
         
-        if ((input.isPressed('Space') || input.isPressed('KeyW')) && this.fuel > 0) {
-            this.vy += this.jetpackThrust;
-            this.fuel -= 0.5;
-        } else if (this.isGrounded && this.fuel < this.maxFuel) {
-            this.fuel += 0.4;
+        const isJumpInput = input.isPressed('Space') || input.isPressed('KeyW');
+
+        if (isJumpInput) {
+            if (this.isGrounded && !this.wasJumpPressed) {
+                this.vy = this.jumpForce;
+                this.isGrounded = false;
+            } else if (!this.isGrounded && this.fuel > 0) {
+                this.vy += this.jetpackThrust;
+                this.fuel -= 0.6;
+            }
+            this.wasJumpPressed = true;
+        } else {
+            this.wasJumpPressed = false;
+            if (this.isGrounded && this.fuel < this.maxFuel) {
+                this.fuel += 0.4;
+            }
         }
 
         if (input.isPressed('KeyE') && this.canDropBrain && this.isGrounded) {
@@ -88,7 +101,7 @@ export class Player extends Character {
         ctx.translate(0, -10);
         ctx.rotate(this.armAngle - this.angle);
         ctx.fillStyle = "#e67e22";
-        ctx.fillRect(0, -5, 45, 10);
+        ctx.fillRect(0, -5, 38, 8);
         ctx.restore();
     }
 }
