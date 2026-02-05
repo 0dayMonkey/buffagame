@@ -6,7 +6,7 @@ export class Player extends Character {
     constructor(x, y) {
         super(x, y, 40, 65);
         this.armAngle = 0;
-        this.jetpackThrust = -0.9; 
+        this.jetpackThrust = -0.55; 
         this.charge = 0;
         this.maxCharge = 30;
         this.isCharging = false;
@@ -22,9 +22,9 @@ export class Player extends Character {
         
         if ((input.isPressed('Space') || input.isPressed('KeyW')) && this.fuel > 0) {
             this.vy += this.jetpackThrust;
-            this.fuel -= 0.7;
+            this.fuel -= 0.5;
         } else if (this.isGrounded && this.fuel < this.maxFuel) {
-            this.fuel += 0.5;
+            this.fuel += 0.4;
         }
 
         if (input.isPressed('KeyE') && this.canDropBrain && this.isGrounded) {
@@ -39,7 +39,7 @@ export class Player extends Character {
 
         if (input.mouse.pressed) {
             this.isCharging = true;
-            if (this.charge < this.maxCharge) this.charge += 0.6;
+            if (this.charge < this.maxCharge) this.charge += 0.5;
         } else if (this.isCharging) {
             this.fire(game);
             this.isCharging = false;
@@ -48,21 +48,21 @@ export class Player extends Character {
 
         if (this.x < game.cameraX + 10) {
             this.x = game.cameraX + 10;
-            this.vx = 10;
+            this.vx = 8;
         }
 
         super.update(dt);
         this.applyPhysics(terrain);
 
         if (!this.isGrounded) {
-            const targetAngle = this.vx * 0.04;
-            this.angle += (targetAngle - this.angle) * 0.1;
+            const targetAngle = this.vx * 0.03;
+            this.angle += (targetAngle - this.angle) * 0.05;
         }
     }
 
     fire(game) {
         if (game.projectiles.length > 0) return;
-        const p = new Projectile(this.x, this.y - 10, this.armAngle, this.charge + 15);
+        const p = new Projectile(this.x, this.y - 10, this.armAngle, this.charge + 12);
         game.projectiles.push(p);
     }
 

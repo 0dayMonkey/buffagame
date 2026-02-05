@@ -18,7 +18,7 @@ export class Zombie extends Character {
         this.stealthTimer = 0;
         this.eatingTimer = 0;
         this.offScreenTimer = 0;
-        this.pullSpeed = 7;
+        this.pullSpeed = 6;
         this.targetBrain = null;
         this.wobble = 0;
         this.hasEscaped = false;
@@ -53,7 +53,7 @@ export class Zombie extends Character {
                 break;
 
             case Zombie.STATES.EMERGING:
-                this.y -= 2;
+                this.y -= 1.5;
                 this.vy = 0;
                 this.wobble += 0.2;
                 this.angle = terrain.getSlopeAngle(this.x) + Math.sin(this.wobble) * 0.1;
@@ -69,11 +69,11 @@ export class Zombie extends Character {
                 if (this.targetBrain && this.targetBrain.active) {
                     if (Math.abs(this.x - this.targetBrain.x) > 10) {
                         const dir = Math.sign(this.targetBrain.x - this.x);
-                        this.vx = dir * 1.5;
+                        this.vx = dir * 1.2;
                     } else {
                         this.vx = 0;
                         this.eatingTimer++;
-                        this.wobble += 0.5;
+                        this.wobble += 0.4;
                         this.angle = Math.sin(this.wobble) * 0.05;
                         
                         if (this.eatingTimer > 100) {
@@ -90,7 +90,7 @@ export class Zombie extends Character {
                 break;
 
             case Zombie.STATES.FLEEING:
-                this.vx = Math.sign(this.x - player.x) * 7;
+                this.vx = Math.sign(this.x - player.x) * 5.5;
                 super.update(dt);
                 this.applyPhysics(terrain);
                 

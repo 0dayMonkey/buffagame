@@ -9,31 +9,29 @@ export class Terrain {
     }
 
     getHeight(x) {
-        const flatMask = (Math.sin(x * 0.0005) + 1) / 2; 
-        const isFlatZone = flatMask > 0.85;
+        const flatMask = (Math.sin(x * 0.0004) + 1) / 2; 
+        const isFlatZone = flatMask > 0.88;
 
         if (isFlatZone) {
             return this.baseHeight;
         }
 
-        let amplitude = 160;
-        let frequency = 0.0007;
+        let amplitude = 280;
+        let frequency = 0.0003;
         let y = 0;
-        let maxAmp = 0;
 
         for (let i = 0; i < 2; i++) {
             y += this.noise.noise(x * frequency, 0) * amplitude;
-            maxAmp += amplitude;
-            amplitude *= 0.4;
-            frequency *= 2.2;
+            amplitude *= 0.3;
+            frequency *= 2.5;
         }
 
-        const blendFactor = Math.max(0, (flatMask - 0.7) * 3.3); 
+        const blendFactor = Math.max(0, (flatMask - 0.75) * 4); 
         return (this.baseHeight - y) * (1 - blendFactor) + this.baseHeight * blendFactor;
     }
 
     getSlopeAngle(x) {
-        const delta = 10;
+        const delta = 15;
         const y1 = this.getHeight(x - delta);
         const y2 = this.getHeight(x + delta);
         return Math.atan2(y2 - y1, delta * 2);
