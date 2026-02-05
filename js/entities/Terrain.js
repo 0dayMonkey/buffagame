@@ -67,12 +67,13 @@ export class Terrain {
         ctx.fill();
 
         ctx.strokeStyle = "#2ecc71";
-        ctx.lineWidth = 8;
+        ctx.lineWidth = 10;
         ctx.beginPath();
         for (let x = startX; x <= endX; x += this.step) {
             const y = this.getHeight(x);
             if (y <= this.baseHeight + 300) {
-                if (x === startX || this.getHeight(x - this.step) > this.baseHeight + 300) {
+                const prevY = this.getHeight(x - this.step);
+                if (x === startX || prevY > this.baseHeight + 300) {
                     ctx.moveTo(x, y);
                 } else {
                     ctx.lineTo(x, y);

@@ -128,37 +128,28 @@ export class Game {
         this.obstacles.forEach(o => {
             const overlapX = (this.player.width + o.width) / 2 - Math.abs(this.player.x - o.x);
             const overlapY = (this.player.height + o.height) / 2 - Math.abs(this.player.y - o.y);
-
             if (overlapX > 0 && overlapY > 0) {
                 if (overlapX < overlapY) {
-                    if (this.player.x < o.x) {
-                        this.player.x -= overlapX;
-                    } else {
-                        this.player.x += overlapX;
-                    }
+                    this.player.x += this.player.x < o.x ? -overlapX : overlapX;
                     this.player.vx = 0;
                 } else {
+                    this.player.y += this.player.y < o.y ? -overlapY : overlapY;
                     if (this.player.y < o.y) {
-                        this.player.y -= overlapY;
                         this.player.vy = 0;
                         this.player.isGrounded = true;
                     } else {
-                        this.player.y += overlapY;
                         this.player.vy = 0;
                     }
                 }
             }
         });
 
+        const pFeetY = this.player.y + this.player.height / 2;
         this.terrain.holes.forEach(hole => {
-            const playerLeft = this.player.x - this.player.width / 2;
-            const playerRight = this.player.x + this.player.width / 2;
-            const playerCenterY = this.player.y;
+            if (pFeetY > this.terrain.baseHeight + 20) {
+                const playerLeft = this.player.x - this.player.width / 2;
+                const playerRight = this.player.x + this.player.width / 2;
 
-            const groundLeftY = this.terrain.getHeight(hole.x - 1);
-            const groundRightY = this.terrain.getHeight(hole.x + hole.width + 1);
-
-            if (playerCenterY > Math.min(groundLeftY, groundRightY) - 20) {
                 if (this.player.x < hole.x && playerRight > hole.x) {
                     this.player.x = hole.x - this.player.width / 2;
                     this.player.vx = 0;
@@ -185,11 +176,9 @@ export class Game {
         if (targetX > this.cameraX) {
             this.cameraX += (targetX - this.cameraX) * 0.1;
         }
-
         if (this.cameraX + this.canvas.width > this.lastSpotX - 400) {
             this.generateMapSegment(this.lastSpotX);
         }
-
         const deleteThreshold = this.cameraX - 1000;
         this.spots = this.spots.filter(s => s.x > deleteThreshold);
         this.obstacles = this.obstacles.filter(o => o.x > deleteThreshold);
@@ -197,7 +186,6 @@ export class Game {
         this.projectiles = this.projectiles.filter(p => p.active !== false);
         this.brains = this.brains.filter(b => b.active !== false);
         this.texts = this.texts.filter(t => t.active !== false);
-
         this.entities.forEach(e => {
             if (e instanceof Player) e.update(dt, this.input, this.canvas, this, this.terrain);
             else if (e instanceof Zombie) e.update(dt, this.player, this.canvas, this.brains, this, this.terrain);
@@ -205,7 +193,6 @@ export class Game {
         this.projectiles.forEach(p => p.update(dt, this.canvas, this.terrain));
         this.brains.forEach(b => b.update(dt, this.canvas, this.terrain));
         this.texts.forEach(t => t.update(dt));
-        
         this.checkCollisions();
     }
 
