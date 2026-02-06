@@ -130,8 +130,8 @@ export class Game {
                     this.player.vy = -5;
                 }
                 
-                // Zombie tombe dans un trou
-                if (z.isFallingInHole && z.y > this.terrain.baseHeight + 150) {
+                // Zombie tombe dans un trou (Kill Z pour Zombie)
+                if (z.y > this.terrain.baseHeight + 200) {
                     z.active = false;
                     this.player.money -= 10;
                     this.addFloatingText("-$10", z.x, z.y - 100, "#e74c3c");
@@ -156,17 +156,24 @@ export class Game {
             }
         });
 
-        // Mort du joueur dans un trou
-        if (this.player.isFallingInHole && this.player.y > this.terrain.baseHeight + 150) {
+        // --- CORRECTION BUG : Mort du joueur (Kill Z) ---
+        // Avant, on vérifiait "isFallingInHole" (X). Maintenant, on vérifie la profondeur (Y).
+        // Si le joueur est plus bas que le sol + 250px, il meurt, qu'il soit dans un trou ou buggé sous la map.
+        const killZoneY = this.terrain.baseHeight + 250;
+        
+        if (this.player.y > killZoneY) {
             this.player.lives--;
             if (this.player.lives > 0) {
                 this.addFloatingText("-1 ❤️", this.player.x, this.player.y - 100, "#e74c3c");
-                const safeX = this.cameraX + 100;
+                
+                // Respawn en lieu sûr (en arrière)
+                const safeX = Math.max(0, this.cameraX + 100);
                 this.player.x = safeX;
+                // On le place bien au-dessus du sol pour éviter de re-tomber tout de suite
                 this.player.y = this.terrain.getHeight(safeX) - 100;
                 this.player.vx = 0;
                 this.player.vy = 0;
-                this.player.invincibility = 40;
+                this.player.invincibility = 60; // 1 seconde d'invincibilité
             }
         }
 
@@ -176,28 +183,34 @@ export class Game {
             setTimeout(() => location.reload(), 2000);
         }
 
-        // Collision Joueur - Obstacles (Rochers, etc.)
+        // Collision Joueur - Obstacles (avec correctif Anti-TP et Coin)
         this.obstacles.forEach(o => {
             const overlapX = (this.player.width + o.width) / 2 - Math.abs(this.player.x - o.x);
             const overlapY = (this.player.height + o.height) / 2 - Math.abs(this.player.y - o.y);
+            
             if (overlapX > 0 && overlapY > 0) {
-                if (overlapX < overlapY) {
+                const isFallingOrLanded = this.player.vy >= 0;
+                const isAbove = this.player.y < o.y;
+
+                if (overlapX < overlapY && isFallingOrLanded) {
+                    // Collision latérale
                     this.player.x += this.player.x < o.x ? -overlapX : overlapX;
                     this.player.vx = 0;
-                } else {
-                    this.player.y += this.player.y < o.y ? -overlapY : overlapY;
-                    if (this.player.y < o.y) {
-                        this.player.vy = 0;
-                        this.player.isGrounded = true;
-                    } else {
-                        this.player.vy = 0;
-                    }
+                } 
+                else if (isFallingOrLanded && isAbove) {
+                    // Atterrissage sur l'obstacle
+                    this.player.y -= overlapY;
+                    this.player.vy = 0;
+                    this.player.isGrounded = true;
+                } 
+                else {
+                    // Collision forcée latérale (cas du saut contre un coin)
+                    // Empêche le TP vers le haut quand on saute et qu'on touche le coin bas de l'obstacle
+                    this.player.x += this.player.x < o.x ? -overlapX : overlapX;
+                    this.player.vx = 0;
                 }
             }
         });
-
-        // NOTE : J'ai supprimé ici la logique manuelle de "checkDist" et "terrain.holes.forEach"
-        // car la nouvelle physique de Character.js gère désormais les murs et les chutes correctement.
     }
 
     _cleanArrays(deleteThreshold) {

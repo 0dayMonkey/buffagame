@@ -29,26 +29,27 @@ export class Zombie extends Character {
         else if (rand < 0.8) this.personality = Zombie.PERSONALITIES.AGGRESSIVE;
         else this.personality = Zombie.PERSONALITIES.CRAZY;
 
-        // --- VARIATIONS PHYSIQUES ---
-        // Vitesse : entre 90% et 125% de la normale
-        this.speedMultiplier = 0.9 + Math.random() * 0.35;
+        // --- VARIATIONS PHYSIQUES (BOOST DE VITESSE) ---
+        // Vitesse augmentée : entre 110% et 145% de la normale (au lieu de 90-125%)
+        this.speedMultiplier = 0.94 + Math.random() * 0.35;
+        
         // Force de saut : un peu aléatoire pour désynchroniser la horde
-        this.jumpForce = -7.5 - Math.random() * 2; 
-        // Maladresse : Chance de rater un obstacle (0% à 15%)
-        this.clumsiness = Math.random() * 0.15;
+        this.jumpForce = -8.5 - Math.random() * 2; 
+        // Maladresse : Chance de rater un obstacle (0% à 10% - réduit pour être moins frustrant)
+        this.clumsiness = Math.random() * 0.10;
         
         // Timers
         this.stealthTimer = 0;
         this.eatingTimer = 0;
         this.offScreenTimer = 0;
-        this.stunTimer = 0; // Temps d'étourdissement si saut raté
+        this.stunTimer = 0; 
 
         // Gameplay
         this.pullSpeed = 13;
         this.targetBrain = null;
         this.wobble = 0;
         this.hasEscaped = false;
-        this.scanDistance = 80;
+        this.scanDistance = 100; // Augmenté pour mieux anticiper
     }
 
     update(dt, player, canvas, brains, game, terrain) {
@@ -60,10 +61,11 @@ export class Zombie extends Character {
             this.stunTimer--;
             this.vx = 0;
             this.applyPhysics(terrain);
-            // Petit tremblement visuel
             this.x += (Math.random() - 0.5) * 2;
             return;
         }
+
+        let intendedDirection = 0; // Pour la détection d'obstacles
 
         switch(this.state) {
             case Zombie.STATES.HIDDEN:
@@ -73,8 +75,6 @@ export class Zombie extends Character {
                 this.angle = 0;
                 
                 const nearBrain = brains.find(b => Math.abs(b.x - this.x) < 150 && b.active);
-                
-                // Les agressifs sortent plus facilement
                 const detectionDist = this.personality === Zombie.PERSONALITIES.AGGRESSIVE ? this.safetyDistance + 100 : this.safetyDistance;
 
                 if (nearBrain && distToPlayer > detectionDist) {
@@ -94,9 +94,8 @@ export class Zombie extends Character {
                     this.stealthTimer = 0;
                 }
                 
-                // Temps d'observation variable selon personnalité
                 let peekTime = 120;
-                if (this.personality === Zombie.PERSONALITIES.CRAZY) peekTime = 60; // Impatient
+                if (this.personality === Zombie.PERSONALITIES.CRAZY) peekTime = 60; 
 
                 this.stealthTimer++;
                 if (this.stealthTimer > peekTime) {
@@ -122,7 +121,6 @@ export class Zombie extends Character {
                 break;
 
             case Zombie.STATES.EATING:
-                // Comportement face au joueur
                 if (distToPlayer < 250) {
                     if (this.personality === Zombie.PERSONALITIES.AGGRESSIVE) {
                         this.state = Zombie.STATES.ATTACKING;
@@ -134,8 +132,8 @@ export class Zombie extends Character {
                 if (this.targetBrain && this.targetBrain.active) {
                     if (Math.abs(this.x - this.targetBrain.x) > 10) {
                         const dir = Math.sign(this.targetBrain.x - this.x);
-                        this.vx = dir * 1.1 * this.speedMultiplier;
-                        this.detectObstacles(game.obstacles);
+                        this.vx = dir * 1.5 * this.speedMultiplier; // Un peu plus rapide pour manger
+                        intendedDirection = dir;
                     } else {
                         this.vx = 0;
                         this.eatingTimer++;
@@ -150,50 +148,49 @@ export class Zombie extends Character {
                     this.state = Zombie.STATES.FLEEING;
                 }
                 
+                // Détection d'obstacle même en mangeant
+                this.detectObstacles(game.obstacles, intendedDirection);
                 super.update(dt);
                 this.resolveObstacleCollisions(game.obstacles);
                 this.applyPhysics(terrain);
                 break;
 
             case Zombie.STATES.ATTACKING:
-                // Court VERS le joueur
                 const attackDir = Math.sign(player.x - this.x);
-                this.vx = attackDir * 3.5 * this.speedMultiplier; // Un peu plus lent que la fuite
+                this.vx = attackDir * 4.0 * this.speedMultiplier; // Boost vitesse attaque
+                intendedDirection = attackDir;
                 
-                // Saute comme un fou si CRAZY
                 if (this.personality === Zombie.PERSONALITIES.CRAZY && this.isGrounded && Math.random() < 0.05) {
                     this.vy = this.jumpForce;
                     this.isGrounded = false;
                 }
 
-                this.detectObstacles(game.obstacles);
+                this.detectObstacles(game.obstacles, intendedDirection);
                 super.update(dt);
                 this.resolveObstacleCollisions(game.obstacles);
                 this.applyPhysics(terrain);
 
-                // Si le joueur s'éloigne trop ou meurt, on repasse en fuite
                 if (distToPlayer > 600 || player.lives <= 0) {
                     this.state = Zombie.STATES.FLEEING;
                 }
                 break;
 
             case Zombie.STATES.FLEEING:
-                // Court A L'OPPOSE du joueur
                 const fleeDir = Math.sign(this.x - player.x);
-                let speed = 5 * this.speedMultiplier;
-                if (this.personality === Zombie.PERSONALITIES.COWARD) speed *= 1.15; // Bonus vitesse lâche
+                let speed = 6.0 * this.speedMultiplier; // Boost vitesse fuite
+                if (this.personality === Zombie.PERSONALITIES.COWARD) speed *= 1.2; 
 
                 this.vx = fleeDir * speed;
+                intendedDirection = fleeDir;
                 
-                // Comportement "CRAZY" : Sauts aléatoires (Paranoïa)
                 if (this.personality === Zombie.PERSONALITIES.CRAZY && this.isGrounded) {
-                    if (Math.random() < 0.03) { // 3% de chance par frame de sauter pour rien
+                    if (Math.random() < 0.03) { 
                         this.vy = this.jumpForce;
                         this.isGrounded = false;
                     }
                 }
 
-                this.detectObstacles(game.obstacles);
+                this.detectObstacles(game.obstacles, intendedDirection);
                 
                 super.update(dt);
                 this.resolveObstacleCollisions(game.obstacles);
@@ -221,20 +218,22 @@ export class Zombie extends Character {
         }
     }
 
-    detectObstacles(obstacles) {
-        if (!this.isGrounded) return;
+    // NOUVELLE LOGIQUE DE DETECTION : Utilise 'direction' au lieu de 'this.vx'
+    // Cela permet de sauter même si on est bloqué contre un mur (vx=0)
+    detectObstacles(obstacles, direction) {
+        if (!this.isGrounded && this.vy > 0) return; // Ne saute pas si on tombe déjà
 
-        // Facteur Maladresse : Chance de rater le check d'obstacle
-        if (Math.random() < this.clumsiness) {
-            // Si le zombie rate son check, il ne saute pas et va se cogner (géré par resolveCollisions)
-            // On peut ajouter un flag pour le faire s'arrêter s'il tape
-            return;
-        }
+        if (Math.random() < this.clumsiness) return;
+        
+        // Si aucune direction n'est fournie, on utilise l'échelle (regard)
+        const checkDir = direction !== 0 ? direction : this.scaleX;
 
-        const lookAheadX = this.x + Math.sign(this.vx) * this.scanDistance;
+        // On regarde devant
+        const lookAheadX = this.x + checkDir * this.scanDistance;
         
         const obstacleAhead = obstacles.find(o => {
             const dist = Math.abs(o.x - lookAheadX);
+            // Vérifie qu'on est au niveau de l'obstacle verticalement
             return dist < o.width && Math.abs(o.y - this.y) < 100;
         });
 
@@ -254,17 +253,34 @@ export class Zombie extends Character {
                     // Collision Mur
                     this.x += this.x < o.x ? -overlapX : overlapX;
                     
-                    // Si on tape un mur alors qu'on voulait avancer, on est étourdi (maladresse)
-                    if (Math.abs(this.vx) > 1) {
-                        this.stunTimer = 30; // 0.5 sec de pause
-                        this.vx = 0;
+                    // CORRECTION : Si le zombie est en l'air, on ne met PAS sa vx à 0.
+                    // On le laisse glisser ou continuer son mouvement pour passer l'obstacle.
+                    if (this.isGrounded) {
+                         // Si on tape un mur alors qu'on voulait avancer et qu'on est au sol, on est étourdi
+                        if (Math.abs(this.vx) > 1) {
+                            // Petite chance de sauter "en panique" quand on touche le mur
+                            if(Math.random() > 0.5) {
+                                this.vy = this.jumpForce;
+                                this.isGrounded = false;
+                            } else {
+                                this.stunTimer = 10; // Etourdissement très court
+                                this.vx = 0;
+                            }
+                        }
+                    } else {
+                        // En l'air : on glisse le long du mur sans s'arrêter net
+                        // Cela aide à passer les obstacles hauts
                     }
+
                 } else {
                     // Atterrissage sur obstacle
-                    this.y += this.y < o.y ? -overlapY : overlapY;
-                    if (this.y < o.y) {
-                        this.vy = 0;
-                        this.isGrounded = true;
+                    // Uniquement si on tombe (vy >= 0)
+                    if (this.vy >= 0) {
+                        this.y += this.y < o.y ? -overlapY : overlapY;
+                        if (this.y < o.y) {
+                            this.vy = 0;
+                            this.isGrounded = true;
+                        }
                     }
                 }
             }
@@ -276,13 +292,8 @@ export class Zombie extends Character {
         
         ctx.scale(this.scaleX, this.scaleY);
         
-        // Code couleur pour debug visuel (optionnel, peut être retiré pour prod pure)
-        // FLEEING/ATTACKING = Rouge
-        // EATING = Orange
-        // PEEKING/EMERGING = Violet
-        
-        if (this.state === Zombie.STATES.ATTACKING) ctx.fillStyle = "#c0392b"; // Rouge sang foncé
-        else if (this.state === Zombie.STATES.FLEEING) ctx.fillStyle = "#e74c3c"; // Rouge clair
+        if (this.state === Zombie.STATES.ATTACKING) ctx.fillStyle = "#c0392b"; 
+        else if (this.state === Zombie.STATES.FLEEING) ctx.fillStyle = "#e74c3c"; 
         else if (this.state === Zombie.STATES.EATING) ctx.fillStyle = "#f39c12"; 
         else ctx.fillStyle = "#9b59b6"; 
 
@@ -294,26 +305,21 @@ export class Zombie extends Character {
         } else {
             ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
             
-            // Bandeau
             ctx.fillStyle = "#2ecc71";
             ctx.fillRect(-this.width / 2, -this.height / 2, this.width, 6);
             
-            // Accessoire selon personnalité
             if (this.personality === Zombie.PERSONALITIES.AGGRESSIVE) {
-                // Bandeau rouge ou yeux rouges
                 ctx.fillStyle = "#e74c3c";
                 ctx.fillRect(-this.width / 2, -this.height / 2, this.width, 6);
             }
             
-            // Yeux
             ctx.fillStyle = "white";
             ctx.fillRect(-6, -15, 5, 5);
             ctx.fillRect(4, -15, 5, 5);
             
-            // Yeux fous pour le CRAZY
             if (this.personality === Zombie.PERSONALITIES.CRAZY) {
                 ctx.fillStyle = "black";
-                ctx.fillRect(-5, -14, 2, 2); // Pupille décalée
+                ctx.fillRect(-5, -14, 2, 2); 
                 ctx.fillRect(6, -13, 1, 1);
             }
         }
