@@ -10,6 +10,7 @@ import { Obstacle } from '../entities/Obstacle.js';
 import { LuckyBlock } from '../entities/LuckyBlock.js';
 import { Coin } from '../entities/Coin.js';
 import { UpgradeManager } from './UpgradeManager.js';
+import { ParticleSystem } from './ParticleSystem.js';
 
 export class Game {
     constructor(canvasId) {
@@ -35,12 +36,16 @@ export class Game {
         this.lastSpotX = 0; 
         this.gameOver = false;
         
+        this.shakeTimer = 0;
+        this.shakeIntensity = 0;
+        
         this.initCanvas();
         this.terrain = new Terrain(this.canvas.height - 100);
         this.player = new Player(200, this.terrain.getHeight(200) - 50); 
         this.entities.push(this.player);
         
         this.upgradeManager = new UpgradeManager(this);
+        this.particleSystem = new ParticleSystem();
 
         this.generateMapSegment(0);
         window.addEventListener('resize', () => this.handleResize());
@@ -78,6 +83,11 @@ export class Game {
     _toggleDevMenu() {
         const el = document.getElementById('devMenu');
         el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    screenShake(amount) {
+        this.shakeTimer = 15;
+        this.shakeIntensity = amount;
     }
 
     triggerGoldenBrain() {
@@ -183,6 +193,7 @@ export class Game {
                 if (distToPlayer < 40 && z.state !== 'CAPTURED' && z.state !== 'HIDDEN' && z.state !== 'PEEKING' && z.state !== 'EXTRACTING' && this.player.invincibility === 0) {
                     this.player.lives--;
                     this.player.invincibility = 60;
+                    this.screenShake(10);
                     this.addFloatingText("-1 ❤️", this.player.x, this.player.y - 60, "#e74c3c");
                     this.player.vx = (this.player.x - z.x) * 0.8;
                     this.player.vy = -5;
@@ -216,6 +227,7 @@ export class Game {
 
             if (dist < 40) {
                 c.active = false;
+                c.onCollect(this.particleSystem);
                 this.player.money += c.value;
                 this.addFloatingText(`+$${c.value}`, c.x, c.y - 20, "#f1c40f");
             } else if (c.y > this.terrain.baseHeight + 200) {
@@ -229,6 +241,7 @@ export class Game {
         if (this.player.y > killZoneY) {
             this.player.lives--;
             if (this.player.lives > 0) {
+                this.screenShake(15);
                 this.addFloatingText("-1 ❤️", this.player.x, this.player.y - 100, "#e74c3c");
                 const safeX = Math.max(0, this.cameraX + 100);
                 this.player.x = safeX;
@@ -296,6 +309,11 @@ export class Game {
         if (this.gameOver) return;
         
         this.upgradeManager.update(this.input);
+        this.particleSystem.update();
+
+        if (this.shakeTimer > 0) {
+            this.shakeTimer--;
+        }
 
         const targetX = this.player.x - this.canvas.width * 0.3;
         if (targetX > this.cameraX) {
@@ -325,7 +343,7 @@ export class Game {
             else if (e instanceof Zombie) e.update(dt, this.player, this.canvas, this.brains, this, this.terrain);
         });
         
-        this.projectiles.forEach(p => p.update(dt, this.canvas, this.terrain, this.obstacles));
+        this.projectiles.forEach(p => p.update(dt, this.canvas, this.terrain, this.obstacles, this.particleSystem));
         this.brains.forEach(b => b.update(dt, this.canvas, this.terrain, this.obstacles));
         this.texts.forEach(t => t.update(dt));
         this.coins.forEach(c => c.update(dt, this.terrain, this.obstacles));
@@ -356,7 +374,15 @@ export class Game {
     render() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.save();
-        this.ctx.translate(-this.cameraX, -this.cameraY);
+        
+        let shakeOffsetX = 0;
+        let shakeOffsetY = 0;
+        if (this.shakeTimer > 0) {
+            shakeOffsetX = (Math.random() - 0.5) * this.shakeIntensity;
+            shakeOffsetY = (Math.random() - 0.5) * this.shakeIntensity;
+        }
+
+        this.ctx.translate(-this.cameraX + shakeOffsetX, -this.cameraY + shakeOffsetY);
         this.terrain.draw(this.ctx, this.cameraX, this.canvas.width, this.canvas.height + 2000);
         this.spots.forEach(s => s.draw(this.ctx));
         this.obstacles.forEach(o => o.draw(this.ctx));
@@ -380,6 +406,7 @@ export class Game {
         });
         
         this.entities.forEach(e => e.draw(this.ctx));
+        this.particleSystem.draw(this.ctx);
         this.texts.forEach(t => t.draw(this.ctx));
         this.ctx.restore(); 
         

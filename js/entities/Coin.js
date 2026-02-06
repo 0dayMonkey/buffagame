@@ -10,6 +10,12 @@ export class Coin extends Entity {
         this.active = true;
     }
 
+    onCollect(particleSystem) {
+        if (particleSystem) {
+            particleSystem.emit(this.x, this.y, 'SPARK', 5);
+        }
+    }
+
     update(dt, terrain, obstacles) {
         this.vy += this.gravity;
         this.x += this.vx;

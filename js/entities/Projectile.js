@@ -17,7 +17,7 @@ export class Projectile extends Entity {
         this.state = 'FLYING'; 
     }
 
-    update(dt, canvas, terrain, obstacles) {
+    update(dt, canvas, terrain, obstacles, particleSystem) {
         if (this.connectedZombie) {
             this.x = this.connectedZombie.x;
             this.y = this.connectedZombie.y;
@@ -51,6 +51,7 @@ export class Projectile extends Entity {
                     this.isStuck = true;
                     this.vx = 0;
                     this.vy = 0;
+                    if (particleSystem) particleSystem.emit(this.x, this.y, 'DUST', 5);
                 }
             }
 
@@ -64,10 +65,12 @@ export class Projectile extends Entity {
                             this.vy *= -0.5;
                             this.x += this.vx * 2; 
                             this.y += this.vy * 2;
+                            if (particleSystem) particleSystem.emit(this.x, this.y, 'SPARK', 3);
                         } else {
                             this.isStuck = true;
                             this.vx = 0;
                             this.vy = 0;
+                            if (particleSystem) particleSystem.emit(this.x, this.y, 'DUST', 3);
                         }
                         break; 
                     }

@@ -78,6 +78,10 @@ export class Player extends Character {
                 this.fuel -= 0.6;
                 if (moveLeft) this.vx -= 0.25;
                 if (moveRight) this.vx += 0.25;
+                
+                if (game.particleSystem) {
+                    game.particleSystem.emit(this.x, this.y + 20, 'JETPACK', 1);
+                }
             }
             this.wasJumpPressed = true;
         } else {
@@ -87,11 +91,8 @@ export class Player extends Character {
             }
         }
 
-        if (input.isPressed('KeyE') && this.canDropBrain) {
-            const b = new Brain(this.x, this.y);
-            b.vx = this.vx + (Math.random() - 0.5) * 2;
-            b.vy = this.vy;
-            game.brains.push(b);
+        if (input.isPressed('KeyE') && this.canDropBrain && this.isGrounded) {
+            game.brains.push(new Brain(this.x, this.y));
             this.canDropBrain = false;
             setTimeout(() => this.canDropBrain = true, 2000);
         }

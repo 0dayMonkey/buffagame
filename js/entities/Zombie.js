@@ -39,7 +39,6 @@ export class Zombie extends Character {
         this.offScreenTimer = 0;
         this.stunTimer = 0; 
 
-        // La vitesse de pull est maintenant gérée par le joueur, mais on garde une base ici
         this.basePullSpeed = 13; 
         this.targetBrain = null;
         this.wobble = 0;
@@ -50,14 +49,11 @@ export class Zombie extends Character {
     }
 
     forceLure(player, terrain) {
-        // Appelé par le Golden Brain
         if (this.state === Zombie.STATES.HIDDEN || this.state === Zombie.STATES.PEEKING) {
             this.state = Zombie.STATES.EMERGING;
-            this.stealthTimer = 1000; // Force immediate exit
+            this.stealthTimer = 1000;
         }
-        // Transforme tout le monde en Aggressif pour qu'ils courent vers le joueur
         this.state = Zombie.STATES.ATTACKING;
-        // On augmente un peu la vitesse pour l'effet de ruée
         this.speedMultiplier *= 1.2;
     }
 
@@ -211,7 +207,6 @@ export class Zombie extends Character {
 
             case Zombie.STATES.CAPTURED:
                 const angleToPlayer = Math.atan2(player.y - this.y, player.x - this.x);
-                // Utilisation de la vitesse de pull dynamique du joueur
                 const pullSpeed = player.getPullSpeed();
                 
                 this.vx = Math.cos(angleToPlayer) * pullSpeed;
@@ -242,6 +237,10 @@ export class Zombie extends Character {
                 this.x += this.vx;
                 this.angle = this.vx * 0.1;
                 
+                if (Math.random() < 0.3 && game.particleSystem) {
+                    game.particleSystem.emit(this.x, this.y, 'SLIME', 1);
+                }
+
                 this.extractTimer++;
 
                 if (this.extractTimer > 45 && !this.coinsSpawned) {
