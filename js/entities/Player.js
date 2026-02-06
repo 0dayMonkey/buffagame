@@ -87,14 +87,17 @@ export class Player extends Character {
             }
         }
 
-        if (input.isPressed('KeyE') && this.canDropBrain && this.isGrounded) {
-            game.brains.push(new Brain(this.x, this.y));
+        if (input.isPressed('KeyE') && this.canDropBrain) {
+            const b = new Brain(this.x, this.y);
+            b.vx = this.vx + (Math.random() - 0.5) * 2;
+            b.vy = this.vy;
+            game.brains.push(b);
             this.canDropBrain = false;
             setTimeout(() => this.canDropBrain = true, 2000);
         }
 
         const worldMouseX = input.mouse.x + game.cameraX;
-        const worldMouseY = input.mouse.y; 
+        const worldMouseY = input.mouse.y + game.cameraY; 
         this.armAngle = Math.atan2(worldMouseY - this.y, worldMouseX - this.x);
 
         const chargeRate = this.getChargeSpeed();

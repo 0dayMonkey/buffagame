@@ -6,25 +6,44 @@ export class Coin extends Entity {
         this.vx = (Math.random() - 0.5) * 10;
         this.vy = -5 - Math.random() * 5;
         this.value = 10;
-        this.bounciness = 0.2;
+        this.bounciness = 0.6;
         this.active = true;
     }
 
-    update(dt, terrain) {
+    update(dt, terrain, obstacles) {
         this.vy += this.gravity;
         this.x += this.vx;
         this.y += this.vy;
 
-        const groundY = terrain.getHeight(this.x);
-        if (this.y + this.height / 2 > groundY) {
-            this.y = groundY - this.height / 2;
-            this.vy *= -this.bounciness;
-            this.vx *= 0.9;
-            
-            if (Math.abs(this.vy) < 1) this.vy = 0;
+        if (terrain) {
+            const groundY = terrain.getHeight(this.x);
+            if (this.y + this.height / 2 > groundY) {
+                this.y = groundY - this.height / 2;
+                this.vy *= -this.bounciness;
+                this.vx *= 0.9;
+                
+                if (Math.abs(this.vy) < 1) this.vy = 0;
+            }
         }
 
-        if (this.y > terrain.baseHeight + 500) {
+        if (obstacles) {
+            obstacles.forEach(o => {
+                const overlapX = (this.width + o.width) / 2 - Math.abs(this.x - o.x);
+                const overlapY = (this.height + o.height) / 2 - Math.abs(this.y - o.y);
+
+                if (overlapX > 0 && overlapY > 0) {
+                    if (overlapX < overlapY) {
+                        this.x += this.x < o.x ? -overlapX : overlapX;
+                        this.vx *= -0.8; 
+                    } else {
+                        this.y += this.y < o.y ? -overlapY : overlapY;
+                        this.vy *= -this.bounciness;
+                    }
+                }
+            });
+        }
+
+        if (terrain && this.y > terrain.baseHeight + 500) {
             this.active = false;
         }
     }
@@ -45,4 +64,4 @@ export class Coin extends Entity {
         ctx.textBaseline = "middle";
         ctx.fillText("$", 0, 1);
     }
-}   
+}

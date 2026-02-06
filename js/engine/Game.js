@@ -31,6 +31,7 @@ export class Game {
         this.lastTime = 0;
         this.ratio = 2.35;
         this.cameraX = 0;
+        this.cameraY = 0;
         this.lastSpotX = 0; 
         this.gameOver = false;
         
@@ -66,8 +67,8 @@ export class Game {
         document.body.appendChild(div);
 
         document.getElementById('btnAddMoney').addEventListener('click', () => {
-            this.player.money += 100000;
-            this.addFloatingText("+$100000 (DEV)", this.player.x, this.player.y - 50, "#0f0");
+            this.player.money += 1000;
+            this.addFloatingText("+$1000 (DEV)", this.player.x, this.player.y - 50, "#0f0");
         });
         document.getElementById('devGod').addEventListener('change', (e) => {
             this.player.invincibility = e.target.checked ? 9999999 : 0;
@@ -300,6 +301,11 @@ export class Game {
         if (targetX > this.cameraX) {
             this.cameraX += (targetX - this.cameraX) * 0.1;
         }
+
+        const targetY = this.player.y - this.canvas.height * 0.6;
+        this.cameraY += (targetY - this.cameraY) * 0.1;
+        if (this.cameraY > 200) this.cameraY = 200; 
+
         if (this.cameraX + this.canvas.width > this.lastSpotX - 400) {
             this.generateMapSegment(this.lastSpotX);
         }
@@ -314,9 +320,9 @@ export class Game {
         });
         
         this.projectiles.forEach(p => p.update(dt, this.canvas, this.terrain));
-        this.brains.forEach(b => b.update(dt, this.canvas, this.terrain));
+        this.brains.forEach(b => b.update(dt, this.canvas, this.terrain, this.obstacles));
         this.texts.forEach(t => t.update(dt));
-        this.coins.forEach(c => c.update(dt, this.terrain));
+        this.coins.forEach(c => c.update(dt, this.terrain, this.obstacles));
         
         this.luckyBlocks.forEach(block => {
             block.update(dt);
@@ -344,8 +350,8 @@ export class Game {
     render() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.save();
-        this.ctx.translate(-this.cameraX, 0);
-        this.terrain.draw(this.ctx, this.cameraX, this.canvas.width, this.canvas.height);
+        this.ctx.translate(-this.cameraX, -this.cameraY);
+        this.terrain.draw(this.ctx, this.cameraX, this.canvas.width, this.canvas.height + 2000);
         this.spots.forEach(s => s.draw(this.ctx));
         this.obstacles.forEach(o => o.draw(this.ctx));
         this.luckyBlocks.forEach(b => b.draw(this.ctx)); 
