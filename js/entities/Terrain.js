@@ -5,7 +5,7 @@ export class Terrain {
         this.noise = new Noise();
         this.baseHeight = baseHeight;
         this.chunkSize = 100;
-        this.step = 5;
+        this.step = 5; // Résolution horizontale
         this.holes = [];
     }
 
@@ -47,33 +47,55 @@ export class Terrain {
     }
 
     draw(ctx, cameraX, width, height) {
-        const startX = Math.floor(cameraX / this.step) * this.step - this.step;
-        const endX = cameraX + width + this.step;
+        // Optimisation rendu : On dessine un peu plus large que l'écran pour éviter le flickering sur les bords
+        const buffer = 100;
+        const startX = Math.floor((cameraX - buffer) / this.step) * this.step;
+        const endX = cameraX + width + buffer;
+
+        // 1. DESSIN DE LA TERRE (Remplissage)
         ctx.fillStyle = "#4e342e";
         ctx.beginPath();
-        ctx.moveTo(startX, height);
+        
+        // On commence en bas à gauche
+        ctx.moveTo(startX, height); 
+        
         for (let x = startX; x <= endX; x += this.step) {
             const y = this.getHeight(x);
+            // On force un "plafond" pour éviter de dessiner par dessus les trous graphiquement
             if (y > this.baseHeight + 300) {
-                ctx.lineTo(x, height);
-                ctx.moveTo(x + this.step, height);
+                ctx.lineTo(x, height); 
             } else {
-                ctx.lineTo(x, y);
+                ctx.lineTo(x, Math.floor(y)); // Math.floor évite le flou/sub-pixel rendering
             }
         }
+        
+        // On ferme la forme en bas à droite
         ctx.lineTo(endX, height);
+        ctx.lineTo(startX, height);
+        ctx.closePath();
         ctx.fill();
+
+        // 2. DESSIN DE L'HERBE (Contour)
         ctx.strokeStyle = "#2ecc71";
         ctx.lineWidth = 10;
+        ctx.lineCap = "round"; // Adoucit les joints
+        ctx.lineJoin = "round";
         ctx.beginPath();
+
+        let isDrawing = false;
+
         for (let x = startX; x <= endX; x += this.step) {
             const y = this.getHeight(x);
-            if (y <= this.baseHeight + 300) {
-                const prevY = this.getHeight(x - this.step);
-                if (x === startX || prevY > this.baseHeight + 300) {
-                    ctx.moveTo(x, y);
+            
+            // Si c'est un trou, on arrête de dessiner l'herbe
+            if (y > this.baseHeight + 300) {
+                isDrawing = false;
+            } else {
+                if (!isDrawing) {
+                    ctx.moveTo(x, Math.floor(y));
+                    isDrawing = true;
                 } else {
-                    ctx.lineTo(x, y);
+                    ctx.lineTo(x, Math.floor(y));
                 }
             }
         }

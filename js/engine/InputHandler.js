@@ -4,7 +4,18 @@ export class InputHandler {
         this.mouse = { x: 0, y: 0, pressed: false };
 
         window.addEventListener('keydown', e => {
-            if ((e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD' || e.code === 'Space' || e.code === 'KeyE') && this.keys.indexOf(e.code) === -1) {
+            if ((e.code === 'ArrowUp' || 
+                 e.code === 'ArrowDown' || 
+                 e.code === 'ArrowLeft' || 
+                 e.code === 'ArrowRight' || 
+                 e.code === 'KeyW' || 
+                 e.code === 'KeyA' || 
+                 e.code === 'KeyS' || 
+                 e.code === 'KeyD' || 
+                 e.code === 'Space' || 
+                 e.code === 'KeyE' || 
+                 e.code === 'KeyF') // AJOUT DE LA TOUCHE F
+                 && this.keys.indexOf(e.code) === -1) {
                 this.keys.push(e.code);
             }
         });

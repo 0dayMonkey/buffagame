@@ -7,11 +7,15 @@ import { Brain } from '../entities/Brain.js';
 import { FloatingText } from '../entities/FloatingText.js';
 import { Terrain } from '../entities/Terrain.js';
 import { Obstacle } from '../entities/Obstacle.js';
+import { LuckyBlock } from '../entities/LuckyBlock.js';
 
 export class Game {
     constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
         this.ctx = this.canvas.getContext('2d');
+        // IMPORTANT : Désactiver le lissage pour le style pixel art et éviter les artefacts
+        this.ctx.imageSmoothingEnabled = false; 
+        
         this.input = new InputHandler(this.canvas);
         
         this.entities = [];
@@ -20,6 +24,7 @@ export class Game {
         this.brains = [];
         this.texts = [];
         this.obstacles = [];
+        this.luckyBlocks = [];
         
         this.lastTime = 0;
         this.ratio = 2.35;
@@ -34,6 +39,66 @@ export class Game {
         
         this.generateMapSegment(0);
         window.addEventListener('resize', () => this.handleResize());
+
+        // Initialisation du Menu DEV
+        this._createDevMenu();
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'KeyP') this._toggleDevMenu();
+        });
+    }
+
+    // --- MENU DEVELOPPEUR ---
+    _createDevMenu() {
+        const div = document.createElement('div');
+        div.id = 'devMenu';
+        div.style.cssText = `
+            position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.8); 
+            color: #0f0; font-family: monospace; padding: 15px; border: 2px solid #0f0;
+            display: none; z-index: 1000; min-width: 200px;
+        `;
+        div.innerHTML = `
+            <h3 style="margin: 0 0 10px 0; text-align:center; border-bottom: 1px solid #0f0">DEV CONSOLE</h3>
+            
+            <label>Vitesse Joueur: <span id="speedVal">0.6</span></label><br>
+            <input type="range" min="0.1" max="2.0" step="0.1" value="0.6" id="devSpeed"><br><br>
+            
+            <label>Distance (TP):</label><br>
+            <input type="number" id="devDist" value="0" style="width: 60px"> 
+            <button id="btnTp">TP</button><br><br>
+            
+            <button id="btnAddMoney" style="width:100%; color: black; font-weight:bold">+ $1000</button><br><br>
+            
+            <label><input type="checkbox" id="devGod"> God Mode</label>
+        `;
+        document.body.appendChild(div);
+
+        // Logique du menu
+        document.getElementById('devSpeed').addEventListener('input', (e) => {
+            this.player.speed = parseFloat(e.target.value);
+            document.getElementById('speedVal').innerText = this.player.speed;
+        });
+        document.getElementById('btnAddMoney').addEventListener('click', () => {
+            this.player.money += 1000;
+            this.addFloatingText("+$1000 (DEV)", this.player.x, this.player.y - 50, "#0f0");
+        });
+        document.getElementById('btnTp').addEventListener('click', () => {
+            const dist = parseInt(document.getElementById('devDist').value) * 100; // Entrée en mètres
+            this.player.x = dist;
+            this.cameraX = dist - 300;
+            this.player.y = this.terrain.getHeight(dist) - 100;
+            this.player.vx = 0;
+            // On nettoie et régénère autour
+            this.lastSpotX = dist + 500;
+            this.generateMapSegment(this.lastSpotX);
+        });
+        document.getElementById('devGod').addEventListener('change', (e) => {
+            this.player.invincibility = e.target.checked ? 9999999 : 0;
+        });
+    }
+
+    _toggleDevMenu() {
+        const el = document.getElementById('devMenu');
+        el.style.display = el.style.display === 'none' ? 'block' : 'none';
     }
 
     initCanvas() {
@@ -43,6 +108,7 @@ export class Game {
         if (currentRatio > this.ratio) this.canvas.width = this.canvas.height * this.ratio;
         else this.canvas.height = this.canvas.width / this.ratio;
         if (this.terrain) this.terrain.baseHeight = this.canvas.height - 100;
+        this.ctx.imageSmoothingEnabled = false; // Rappel important au resize
     }
 
     handleResize() {
@@ -53,6 +119,7 @@ export class Game {
         let currentX = Math.max(startX, this.lastSpotX + 400); 
         
         for(let i = 0; i < 4; i++) {
+            // 1. Trous
             if (Math.random() < 0.25) {
                 this.terrain.addHole(currentX, 240);
                 currentX += 350;
@@ -60,6 +127,7 @@ export class Game {
 
             currentX += 200 + Math.random() * 250;
 
+            // 2. Zombies
             if (Math.random() < 0.6) {
                 const groundY = this.terrain.getHeight(currentX);
                 if (groundY <= this.terrain.baseHeight + 100) {
@@ -68,8 +136,19 @@ export class Game {
                 }
             }
 
+            // 3. Lucky Blocks (CORRECTION RARETÉ & DÉPART)
+            // Condition : Être au moins à 2000px de distance (20 mètres)
+            if (currentX > 2000 && Math.random() < 0.05) { // 5% de chance seulement (Rare)
+                const blockX = currentX - 100;
+                const groundY = this.terrain.getHeight(blockX);
+                if (groundY <= this.terrain.baseHeight + 100) {
+                    this.luckyBlocks.push(new LuckyBlock(blockX, groundY - 120, blockX));
+                }
+            }
+
             currentX += 200 + Math.random() * 250;
 
+            // 4. Obstacles
             if (Math.random() < 0.4) {
                 const types = ['STUMP', 'ROCK', 'LOG'];
                 const type = types[Math.floor(Math.random() * types.length)];
@@ -99,7 +178,6 @@ export class Game {
             if (!p.active || p.connectedZombie || p.isStuck) return;
             this.entities.forEach(z => {
                 if (z instanceof Zombie) {
-                    // Vérification que le zombie est vulnérable
                     const isCapturable = z.state !== Zombie.STATES.HIDDEN && 
                                          z.state !== Zombie.STATES.PEEKING && 
                                          z.state !== Zombie.STATES.CAPTURED;
@@ -116,12 +194,11 @@ export class Game {
             });
         });
 
-        // Collision Joueur - Zombies
+        // Collision Joueur - Zombies & Trous
         this.entities.forEach(z => {
             if (z instanceof Zombie) {
                 const distToPlayer = Math.sqrt((this.player.x - z.x)**2 + (this.player.y - z.y)**2);
                 
-                // Dégâts au joueur (seulement si le zombie est sorti)
                 if (distToPlayer < 40 && z.state !== 'CAPTURED' && z.state !== 'HIDDEN' && z.state !== 'PEEKING' && this.player.invincibility === 0) {
                     this.player.lives--;
                     this.player.invincibility = 60;
@@ -130,14 +207,12 @@ export class Game {
                     this.player.vy = -5;
                 }
                 
-                // Zombie tombe dans un trou (Kill Z pour Zombie)
                 if (z.y > this.terrain.baseHeight + 200) {
                     z.active = false;
                     this.player.money -= 10;
                     this.addFloatingText("-$10", z.x, z.y - 100, "#e74c3c");
                 }
                 
-                // Zombie capturé ou enfui
                 if (z.state === 'CAPTURED') {
                     const dist = Math.sqrt((z.x - this.player.x)**2 + (z.y - this.player.y)**2);
                     if (dist < 50) {
@@ -156,34 +231,27 @@ export class Game {
             }
         });
 
-        // --- CORRECTION BUG : Mort du joueur (Kill Z) ---
-        // Avant, on vérifiait "isFallingInHole" (X). Maintenant, on vérifie la profondeur (Y).
-        // Si le joueur est plus bas que le sol + 250px, il meurt, qu'il soit dans un trou ou buggé sous la map.
+        // Kill Zone Joueur
         const killZoneY = this.terrain.baseHeight + 250;
-        
         if (this.player.y > killZoneY) {
             this.player.lives--;
             if (this.player.lives > 0) {
                 this.addFloatingText("-1 ❤️", this.player.x, this.player.y - 100, "#e74c3c");
-                
-                // Respawn en lieu sûr (en arrière)
                 const safeX = Math.max(0, this.cameraX + 100);
                 this.player.x = safeX;
-                // On le place bien au-dessus du sol pour éviter de re-tomber tout de suite
                 this.player.y = this.terrain.getHeight(safeX) - 100;
                 this.player.vx = 0;
                 this.player.vy = 0;
-                this.player.invincibility = 60; // 1 seconde d'invincibilité
+                this.player.invincibility = 60;
             }
         }
 
-        // Game Over
         if (this.player.lives <= 0 && !this.gameOver) {
             this.gameOver = true;
             setTimeout(() => location.reload(), 2000);
         }
 
-        // Collision Joueur - Obstacles (avec correctif Anti-TP et Coin)
+        // Collision Joueur - Obstacles
         this.obstacles.forEach(o => {
             const overlapX = (this.player.width + o.width) / 2 - Math.abs(this.player.x - o.x);
             const overlapY = (this.player.height + o.height) / 2 - Math.abs(this.player.y - o.y);
@@ -193,19 +261,15 @@ export class Game {
                 const isAbove = this.player.y < o.y;
 
                 if (overlapX < overlapY && isFallingOrLanded) {
-                    // Collision latérale
                     this.player.x += this.player.x < o.x ? -overlapX : overlapX;
                     this.player.vx = 0;
                 } 
                 else if (isFallingOrLanded && isAbove) {
-                    // Atterrissage sur l'obstacle
                     this.player.y -= overlapY;
                     this.player.vy = 0;
                     this.player.isGrounded = true;
                 } 
                 else {
-                    // Collision forcée latérale (cas du saut contre un coin)
-                    // Empêche le TP vers le haut quand on saute et qu'on touche le coin bas de l'obstacle
                     this.player.x += this.player.x < o.x ? -overlapX : overlapX;
                     this.player.vx = 0;
                 }
@@ -214,7 +278,7 @@ export class Game {
     }
 
     _cleanArrays(deleteThreshold) {
-        const arraysToClean = [this.spots, this.obstacles, this.entities, this.projectiles, this.brains, this.texts];
+        const arraysToClean = [this.spots, this.obstacles, this.entities, this.projectiles, this.brains, this.texts, this.luckyBlocks];
         
         arraysToClean.forEach(arr => {
             for (let i = arr.length - 1; i >= 0; i--) {
@@ -254,9 +318,31 @@ export class Game {
             if (e instanceof Player) e.update(dt, this.input, this.canvas, this, this.terrain);
             else if (e instanceof Zombie) e.update(dt, this.player, this.canvas, this.brains, this, this.terrain);
         });
+        
         this.projectiles.forEach(p => p.update(dt, this.canvas, this.terrain));
         this.brains.forEach(b => b.update(dt, this.canvas, this.terrain));
         this.texts.forEach(t => t.update(dt));
+        
+        this.luckyBlocks.forEach(block => {
+            block.update(dt);
+            if (!block.isOpened) {
+                const dist = Math.sqrt((this.player.x - block.x)**2 + (this.player.y - block.y)**2);
+                if (dist < 80 && this.input.isPressed('KeyF')) {
+                    if (this.player.money >= block.price) {
+                        this.player.money -= block.price;
+                        this.player.lives++; 
+                        block.isOpened = true;
+                        this.addFloatingText(`-$${block.price}`, block.x, block.y - 50, "#e74c3c");
+                        this.addFloatingText("+1 ❤️", block.x + 20, block.y - 80, "#e91e63");
+                    } else {
+                        if (Math.random() < 0.1) { 
+                            this.addFloatingText("Pas assez d'argent !", block.x, block.y - 50, "white");
+                        }
+                    }
+                }
+            }
+        });
+
         this.checkCollisions();
     }
 
@@ -267,7 +353,9 @@ export class Game {
         this.terrain.draw(this.ctx, this.cameraX, this.canvas.width, this.canvas.height);
         this.spots.forEach(s => s.draw(this.ctx));
         this.obstacles.forEach(o => o.draw(this.ctx));
+        this.luckyBlocks.forEach(b => b.draw(this.ctx)); 
         this.brains.forEach(b => b.draw(this.ctx));
+        
         this.projectiles.forEach(p => {
             this.ctx.beginPath();
             this.ctx.strokeStyle = "#333";
@@ -282,6 +370,7 @@ export class Game {
             this.ctx.stroke();
             p.draw(this.ctx);
         });
+        
         this.entities.forEach(e => e.draw(this.ctx));
         this.texts.forEach(t => t.draw(this.ctx));
         this.ctx.restore(); 
@@ -299,6 +388,11 @@ export class Game {
         this.ctx.font = "16px Arial";
         this.ctx.fillStyle = "#bdc3c7";
         this.ctx.fillText("DISTANCE: " + Math.floor(this.player.x / 100) + "m", 30, 115);
+        
+        // Petit indice pour le menu dev
+        this.ctx.font = "10px monospace";
+        this.ctx.fillStyle = "rgba(255,255,255,0.3)";
+        this.ctx.fillText("Dev: [P]", this.canvas.width - 50, 20);
     }
 
     _renderGameOver() {
