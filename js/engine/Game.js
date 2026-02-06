@@ -8,12 +8,12 @@ import { FloatingText } from '../entities/FloatingText.js';
 import { Terrain } from '../entities/Terrain.js';
 import { Obstacle } from '../entities/Obstacle.js';
 import { LuckyBlock } from '../entities/LuckyBlock.js';
+import { Coin } from '../entities/Coin.js';
 
 export class Game {
     constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
         this.ctx = this.canvas.getContext('2d');
-        // IMPORTANT : Désactiver le lissage pour le style pixel art et éviter les artefacts
         this.ctx.imageSmoothingEnabled = false; 
         
         this.input = new InputHandler(this.canvas);
@@ -25,6 +25,7 @@ export class Game {
         this.texts = [];
         this.obstacles = [];
         this.luckyBlocks = [];
+        this.coins = [];
         
         this.lastTime = 0;
         this.ratio = 2.35;
@@ -40,14 +41,12 @@ export class Game {
         this.generateMapSegment(0);
         window.addEventListener('resize', () => this.handleResize());
 
-        // Initialisation du Menu DEV
         this._createDevMenu();
         window.addEventListener('keydown', (e) => {
             if (e.code === 'KeyP') this._toggleDevMenu();
         });
     }
 
-    // --- MENU DEVELOPPEUR ---
     _createDevMenu() {
         const div = document.createElement('div');
         div.id = 'devMenu';
@@ -72,7 +71,6 @@ export class Game {
         `;
         document.body.appendChild(div);
 
-        // Logique du menu
         document.getElementById('devSpeed').addEventListener('input', (e) => {
             this.player.speed = parseFloat(e.target.value);
             document.getElementById('speedVal').innerText = this.player.speed;
@@ -82,12 +80,11 @@ export class Game {
             this.addFloatingText("+$1000 (DEV)", this.player.x, this.player.y - 50, "#0f0");
         });
         document.getElementById('btnTp').addEventListener('click', () => {
-            const dist = parseInt(document.getElementById('devDist').value) * 100; // Entrée en mètres
+            const dist = parseInt(document.getElementById('devDist').value) * 100;
             this.player.x = dist;
             this.cameraX = dist - 300;
             this.player.y = this.terrain.getHeight(dist) - 100;
             this.player.vx = 0;
-            // On nettoie et régénère autour
             this.lastSpotX = dist + 500;
             this.generateMapSegment(this.lastSpotX);
         });
@@ -108,7 +105,7 @@ export class Game {
         if (currentRatio > this.ratio) this.canvas.width = this.canvas.height * this.ratio;
         else this.canvas.height = this.canvas.width / this.ratio;
         if (this.terrain) this.terrain.baseHeight = this.canvas.height - 100;
-        this.ctx.imageSmoothingEnabled = false; // Rappel important au resize
+        this.ctx.imageSmoothingEnabled = false; 
     }
 
     handleResize() {
@@ -119,7 +116,6 @@ export class Game {
         let currentX = Math.max(startX, this.lastSpotX + 400); 
         
         for(let i = 0; i < 4; i++) {
-            // 1. Trous
             if (Math.random() < 0.25) {
                 this.terrain.addHole(currentX, 240);
                 currentX += 350;
@@ -127,7 +123,6 @@ export class Game {
 
             currentX += 200 + Math.random() * 250;
 
-            // 2. Zombies
             if (Math.random() < 0.6) {
                 const groundY = this.terrain.getHeight(currentX);
                 if (groundY <= this.terrain.baseHeight + 100) {
@@ -136,9 +131,7 @@ export class Game {
                 }
             }
 
-            // 3. Lucky Blocks (CORRECTION RARETÉ & DÉPART)
-            // Condition : Être au moins à 2000px de distance (20 mètres)
-            if (currentX > 2000 && Math.random() < 0.05) { // 5% de chance seulement (Rare)
+            if (currentX > 2000 && Math.random() < 0.05) { 
                 const blockX = currentX - 100;
                 const groundY = this.terrain.getHeight(blockX);
                 if (groundY <= this.terrain.baseHeight + 100) {
@@ -148,7 +141,6 @@ export class Game {
 
             currentX += 200 + Math.random() * 250;
 
-            // 4. Obstacles
             if (Math.random() < 0.4) {
                 const types = ['STUMP', 'ROCK', 'LOG'];
                 const type = types[Math.floor(Math.random() * types.length)];
@@ -173,14 +165,14 @@ export class Game {
     checkCollisions() {
         if (this.gameOver) return;
 
-        // Collision Projectiles - Zombies
         this.projectiles.forEach(p => {
             if (!p.active || p.connectedZombie || p.isStuck) return;
             this.entities.forEach(z => {
                 if (z instanceof Zombie) {
                     const isCapturable = z.state !== Zombie.STATES.HIDDEN && 
                                          z.state !== Zombie.STATES.PEEKING && 
-                                         z.state !== Zombie.STATES.CAPTURED;
+                                         z.state !== Zombie.STATES.CAPTURED &&
+                                         z.state !== Zombie.STATES.EXTRACTING;
                                          
                     if (isCapturable) {
                         const dx = p.x - z.x;
@@ -194,12 +186,11 @@ export class Game {
             });
         });
 
-        // Collision Joueur - Zombies & Trous
         this.entities.forEach(z => {
             if (z instanceof Zombie) {
                 const distToPlayer = Math.sqrt((this.player.x - z.x)**2 + (this.player.y - z.y)**2);
                 
-                if (distToPlayer < 40 && z.state !== 'CAPTURED' && z.state !== 'HIDDEN' && z.state !== 'PEEKING' && this.player.invincibility === 0) {
+                if (distToPlayer < 40 && z.state !== 'CAPTURED' && z.state !== 'HIDDEN' && z.state !== 'PEEKING' && z.state !== 'EXTRACTING' && this.player.invincibility === 0) {
                     this.player.lives--;
                     this.player.invincibility = 60;
                     this.addFloatingText("-1 ❤️", this.player.x, this.player.y - 60, "#e74c3c");
@@ -207,23 +198,13 @@ export class Game {
                     this.player.vy = -5;
                 }
                 
-                if (z.y > this.terrain.baseHeight + 200) {
+                if (z.y > this.terrain.baseHeight + 200 && z.state !== 'EXTRACTING') {
                     z.active = false;
                     this.player.money -= 10;
                     this.addFloatingText("-$10", z.x, z.y - 100, "#e74c3c");
                 }
                 
-                if (z.state === 'CAPTURED') {
-                    const dist = Math.sqrt((z.x - this.player.x)**2 + (z.y - this.player.y)**2);
-                    if (dist < 50) {
-                        z.active = false;
-                        this.player.money += 50;
-                        this.addFloatingText("+$50", this.player.x, this.player.y - 50, "#2ecc71");
-                        this.projectiles.forEach(p => { 
-                            if (p.connectedZombie === z) p.active = false; 
-                        });
-                    }
-                } else if (z.hasEscaped) {
+                if (z.hasEscaped) {
                     z.active = false;
                     this.player.money -= 10;
                     this.addFloatingText("-$10", this.player.x, this.player.y - 50, "#e74c3c");
@@ -231,7 +212,21 @@ export class Game {
             }
         });
 
-        // Kill Zone Joueur
+        this.coins.forEach(c => {
+            if (!c.active) return;
+            
+            const dist = Math.sqrt((this.player.x - c.x)**2 + (this.player.y - c.y)**2);
+            if (dist < 40) {
+                c.active = false;
+                this.player.money += c.value;
+                this.addFloatingText(`+$${c.value}`, c.x, c.y - 20, "#f1c40f");
+            } else if (c.y > this.terrain.baseHeight + 200) {
+                c.active = false;
+                this.player.money += c.value;
+                this.addFloatingText(`+$${c.value}`, c.x, this.terrain.baseHeight, "#f1c40f");
+            }
+        });
+
         const killZoneY = this.terrain.baseHeight + 250;
         if (this.player.y > killZoneY) {
             this.player.lives--;
@@ -251,7 +246,6 @@ export class Game {
             setTimeout(() => location.reload(), 2000);
         }
 
-        // Collision Joueur - Obstacles
         this.obstacles.forEach(o => {
             const overlapX = (this.player.width + o.width) / 2 - Math.abs(this.player.x - o.x);
             const overlapY = (this.player.height + o.height) / 2 - Math.abs(this.player.y - o.y);
@@ -278,7 +272,7 @@ export class Game {
     }
 
     _cleanArrays(deleteThreshold) {
-        const arraysToClean = [this.spots, this.obstacles, this.entities, this.projectiles, this.brains, this.texts, this.luckyBlocks];
+        const arraysToClean = [this.spots, this.obstacles, this.entities, this.projectiles, this.brains, this.texts, this.luckyBlocks, this.coins];
         
         arraysToClean.forEach(arr => {
             for (let i = arr.length - 1; i >= 0; i--) {
@@ -322,6 +316,7 @@ export class Game {
         this.projectiles.forEach(p => p.update(dt, this.canvas, this.terrain));
         this.brains.forEach(b => b.update(dt, this.canvas, this.terrain));
         this.texts.forEach(t => t.update(dt));
+        this.coins.forEach(c => c.update(dt, this.terrain));
         
         this.luckyBlocks.forEach(block => {
             block.update(dt);
@@ -355,6 +350,7 @@ export class Game {
         this.obstacles.forEach(o => o.draw(this.ctx));
         this.luckyBlocks.forEach(b => b.draw(this.ctx)); 
         this.brains.forEach(b => b.draw(this.ctx));
+        this.coins.forEach(c => c.draw(this.ctx));
         
         this.projectiles.forEach(p => {
             this.ctx.beginPath();
