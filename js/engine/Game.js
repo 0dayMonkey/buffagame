@@ -51,12 +51,15 @@ export class Game {
 
     generateMapSegment(startX) {
         let currentX = Math.max(startX, this.lastSpotX + 400); 
+        
         for(let i = 0; i < 4; i++) {
             if (Math.random() < 0.25) {
                 this.terrain.addHole(currentX, 240);
                 currentX += 350;
             }
+
             currentX += 200 + Math.random() * 250;
+
             if (Math.random() < 0.6) {
                 const groundY = this.terrain.getHeight(currentX);
                 if (groundY <= this.terrain.baseHeight + 100) {
@@ -64,7 +67,9 @@ export class Game {
                     this.entities.push(new Zombie(currentX, groundY - 50));
                 }
             }
+
             currentX += 200 + Math.random() * 250;
+
             if (Math.random() < 0.4) {
                 const types = ['STUMP', 'ROCK', 'LOG'];
                 const type = types[Math.floor(Math.random() * types.length)];
@@ -73,6 +78,7 @@ export class Game {
                     this.obstacles.push(new Obstacle(currentX, groundY, type));
                 }
             }
+            
             this.lastSpotX = currentX;
         }
     }
@@ -88,18 +94,23 @@ export class Game {
     checkCollisions() {
         if (this.gameOver) return;
 
+        // --- CORRECTION BUG : Impossible de capturer un zombie caché ou qui regarde ---
         this.projectiles.forEach(p => {
             if (!p.active || p.connectedZombie || p.isStuck) return;
             this.entities.forEach(z => {
-                if (z instanceof Zombie && !['HIDDEN', 'CAPTURED'].includes(z.state)) {
-                    const dx = p.x - z.x;
-                    const dy = p.y - z.y;
-                    if (Math.sqrt(dx * dx + dy * dy) < 40) {
-                        p.connectedZombie = z;
-                        z.state = 'CAPTURED';
-                        this.entities.forEach(other => {
-                            if (other instanceof Zombie && other !== z && Math.abs(other.x - z.x) < 450) other.alert();
-                        });
+                if (z instanceof Zombie) {
+                    // AJOUT : Vérification stricte des états capturables
+                    const isCapturable = z.state !== Zombie.STATES.HIDDEN && 
+                                         z.state !== Zombie.STATES.PEEKING && 
+                                         z.state !== Zombie.STATES.CAPTURED;
+                                         
+                    if (isCapturable) {
+                        const dx = p.x - z.x;
+                        const dy = p.y - z.y;
+                        if (Math.sqrt(dx * dx + dy * dy) < 40) {
+                            p.connectedZombie = z;
+                            z.state = Zombie.STATES.CAPTURED;
+                        }
                     }
                 }
             });
@@ -108,26 +119,31 @@ export class Game {
         this.entities.forEach(z => {
             if (z instanceof Zombie) {
                 const distToPlayer = Math.sqrt((this.player.x - z.x)**2 + (this.player.y - z.y)**2);
-                const dangerousStates = ['EATING', 'FLEEING', 'ATTACKING'];
-                if (distToPlayer < 40 && dangerousStates.includes(z.state) && this.player.invincibility === 0) {
+                
+                // Dégâts au joueur (seulement si le zombie est sorti)
+                if (distToPlayer < 40 && z.state !== 'CAPTURED' && z.state !== 'HIDDEN' && z.state !== 'PEEKING' && this.player.invincibility === 0) {
                     this.player.lives--;
                     this.player.invincibility = 60;
                     this.addFloatingText("-1 ❤️", this.player.x, this.player.y - 60, "#e74c3c");
                     this.player.vx = (this.player.x - z.x) * 0.8;
                     this.player.vy = -5;
                 }
+                
                 if (z.isFallingInHole && z.y > this.terrain.baseHeight + 150) {
                     z.active = false;
                     this.player.money -= 10;
                     this.addFloatingText("-$10", z.x, z.y - 100, "#e74c3c");
                 }
+                
                 if (z.state === 'CAPTURED') {
                     const dist = Math.sqrt((z.x - this.player.x)**2 + (z.y - this.player.y)**2);
                     if (dist < 50) {
                         z.active = false;
                         this.player.money += 50;
                         this.addFloatingText("+$50", this.player.x, this.player.y - 50, "#2ecc71");
-                        this.projectiles.forEach(p => { if (p.connectedZombie === z) p.active = false; });
+                        this.projectiles.forEach(p => { 
+                            if (p.connectedZombie === z) p.active = false; 
+                        });
                     }
                 } else if (z.hasEscaped) {
                     z.active = false;
@@ -156,32 +172,29 @@ export class Game {
         }
 
         this.obstacles.forEach(o => {
-            const collisionTargets = [this.player, ...this.entities.filter(e => e instanceof Zombie && !['HIDDEN', 'PEEKING', 'CAPTURED'].includes(e.state))];
-            collisionTargets.forEach(target => {
-                const overlapX = (target.width + o.width) / 2 - Math.abs(target.x - o.x);
-                const overlapY = (target.height + o.height) / 2 - Math.abs(target.y - o.y);
-                if (overlapX > 0 && overlapY > 0) {
-                    if (overlapX < overlapY) {
-                        target.x += target.x < o.x ? -overlapX : overlapX;
-                        target.vx = 0;
-                        if (target instanceof Zombie && target.isGrounded) target.vy = -8.5;
+            const overlapX = (this.player.width + o.width) / 2 - Math.abs(this.player.x - o.x);
+            const overlapY = (this.player.height + o.height) / 2 - Math.abs(this.player.y - o.y);
+            if (overlapX > 0 && overlapY > 0) {
+                if (overlapX < overlapY) {
+                    this.player.x += this.player.x < o.x ? -overlapX : overlapX;
+                    this.player.vx = 0;
+                } else {
+                    this.player.y += this.player.y < o.y ? -overlapY : overlapY;
+                    if (this.player.y < o.y) {
+                        this.player.vy = 0;
+                        this.player.isGrounded = true;
                     } else {
-                        target.y += target.y < o.y ? -overlapY : overlapY;
-                        if (target.y < o.y) {
-                            target.vy = 0;
-                            target.isGrounded = true;
-                        } else {
-                            target.vy = 0;
-                        }
+                        this.player.vy = 0;
                     }
                 }
-            });
+            }
         });
 
         const checkDist = 18;
         const leftWallY = this.terrain.getHeight(this.player.x - checkDist);
         const rightWallY = this.terrain.getHeight(this.player.x + checkDist);
         const pFeetY = this.player.y + this.player.height / 2;
+
         if (!this.player.isFallingInHole) {
             if (leftWallY < pFeetY - 15) { this.player.x += 2; this.player.vx = 0; }
             if (rightWallY < pFeetY - 15) { this.player.x -= 2; this.player.vx = 0; }
@@ -202,6 +215,19 @@ export class Game {
         });
     }
 
+    _cleanArrays(deleteThreshold) {
+        const arraysToClean = [this.spots, this.obstacles, this.entities, this.projectiles, this.brains, this.texts];
+        
+        arraysToClean.forEach(arr => {
+            for (let i = arr.length - 1; i >= 0; i--) {
+                const item = arr[i];
+                if (item.active === false || (item.x !== undefined && item.x <= deleteThreshold)) {
+                    arr.splice(i, 1);
+                }
+            }
+        });
+    }
+
     loop(timestamp) {
         if (!this.lastTime) this.lastTime = timestamp;
         let dt = timestamp - this.lastTime;
@@ -215,15 +241,17 @@ export class Game {
     update(dt) {
         if (this.gameOver) return;
         const targetX = this.player.x - this.canvas.width * 0.3;
-        if (targetX > this.cameraX) this.cameraX += (targetX - this.cameraX) * 0.1;
-        if (this.cameraX + this.canvas.width > this.lastSpotX - 400) this.generateMapSegment(this.lastSpotX);
+        if (targetX > this.cameraX) {
+            this.cameraX += (targetX - this.cameraX) * 0.1;
+        }
+        if (this.cameraX + this.canvas.width > this.lastSpotX - 400) {
+            this.generateMapSegment(this.lastSpotX);
+        }
+        
         const deleteThreshold = this.cameraX - 1000;
-        this.spots = this.spots.filter(s => s.x > deleteThreshold);
-        this.obstacles = this.obstacles.filter(o => o.x > deleteThreshold);
-        this.entities = this.entities.filter(e => e.active !== false);
-        this.projectiles = this.projectiles.filter(p => p.active !== false);
-        this.brains = this.brains.filter(b => b.active !== false);
-        this.texts = this.texts.filter(t => t.active !== false);
+        
+        this._cleanArrays(deleteThreshold);
+
         this.entities.forEach(e => {
             if (e instanceof Player) e.update(dt, this.input, this.canvas, this, this.terrain);
             else if (e instanceof Zombie) e.update(dt, this.player, this.canvas, this.brains, this, this.terrain);
