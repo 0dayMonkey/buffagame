@@ -389,7 +389,6 @@ export class Game {
         this.ctx.fillStyle = "#bdc3c7";
         this.ctx.fillText("DISTANCE: " + Math.floor(this.player.x / 100) + "m", 30, 115);
         
-        // Petit indice pour le menu dev
         this.ctx.font = "10px monospace";
         this.ctx.fillStyle = "rgba(255,255,255,0.3)";
         this.ctx.fillText("Dev: [P]", this.canvas.width - 50, 20);
