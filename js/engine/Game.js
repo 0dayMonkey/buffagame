@@ -302,9 +302,15 @@ export class Game {
             this.cameraX += (targetX - this.cameraX) * 0.1;
         }
 
-        const targetY = this.player.y - this.canvas.height * 0.6;
+        const rawGroundY = this.terrain.getHeight(this.player.x);
+        let safeCameraGround = rawGroundY;
+        
+        if (safeCameraGround > this.terrain.baseHeight + 50) {
+            safeCameraGround = this.terrain.baseHeight;
+        }
+
+        const targetY = safeCameraGround - this.canvas.height * 0.8;
         this.cameraY += (targetY - this.cameraY) * 0.1;
-        if (this.cameraY > 200) this.cameraY = 200; 
 
         if (this.cameraX + this.canvas.width > this.lastSpotX - 400) {
             this.generateMapSegment(this.lastSpotX);
@@ -319,7 +325,7 @@ export class Game {
             else if (e instanceof Zombie) e.update(dt, this.player, this.canvas, this.brains, this, this.terrain);
         });
         
-        this.projectiles.forEach(p => p.update(dt, this.canvas, this.terrain));
+        this.projectiles.forEach(p => p.update(dt, this.canvas, this.terrain, this.obstacles));
         this.brains.forEach(b => b.update(dt, this.canvas, this.terrain, this.obstacles));
         this.texts.forEach(t => t.update(dt));
         this.coins.forEach(c => c.update(dt, this.terrain, this.obstacles));

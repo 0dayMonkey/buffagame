@@ -17,7 +17,7 @@ export class Projectile extends Entity {
         this.state = 'FLYING'; 
     }
 
-    update(dt, canvas, terrain) {
+    update(dt, canvas, terrain, obstacles) {
         if (this.connectedZombie) {
             this.x = this.connectedZombie.x;
             this.y = this.connectedZombie.y;
@@ -51,6 +51,26 @@ export class Projectile extends Entity {
                     this.isStuck = true;
                     this.vx = 0;
                     this.vy = 0;
+                }
+            }
+
+            if (obstacles) {
+                for (const o of obstacles) {
+                    if (this.x < o.x + o.width/2 && this.x > o.x - o.width/2 &&
+                        this.y < o.y + o.height/2 && this.y > o.y - o.height/2) {
+                        
+                        if (o.type === 'ROCK') {
+                            this.vx *= -0.5;
+                            this.vy *= -0.5;
+                            this.x += this.vx * 2; 
+                            this.y += this.vy * 2;
+                        } else {
+                            this.isStuck = true;
+                            this.vx = 0;
+                            this.vy = 0;
+                        }
+                        break; 
+                    }
                 }
             }
         } 
