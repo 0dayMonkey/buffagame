@@ -7,7 +7,7 @@ export class Player extends Character {
         super(x, y, 32, 52);
         this.armAngle = 0;
         this.jetpackThrust = -0.58; 
-        this.jumpForce = -9;
+        this.jumpForce = -10;
         this.wasJumpPressed = false;
         this.charge = 0;
         this.maxCharge = 30;
@@ -18,18 +18,10 @@ export class Player extends Character {
         this.canDropBrain = true;
         this.lives = 3;
         this.invincibility = 0;
-        this.stunTimer = 0;
     }
 
     update(dt, input, canvas, game, terrain) {
         if (this.invincibility > 0) this.invincibility--;
-        if (this.stunTimer > 0) {
-            this.stunTimer -= dt;
-            this.vx *= 0.8;
-            super.update(dt);
-            this.applyPhysics(terrain);
-            return;
-        }
 
         const moveLeft = input.isPressed('KeyA') || input.isPressed('ArrowLeft');
         const moveRight = input.isPressed('KeyD') || input.isPressed('ArrowRight');
@@ -93,22 +85,14 @@ export class Player extends Character {
     }
 
     fire(game) {
-        if (game.projectiles.length > 0 || this.stunTimer > 0) return;
+        if (game.projectiles.length > 0) return;
         const p = new Projectile(this.x, this.y - 10, this.armAngle, this.charge + 12);
         game.projectiles.push(p);
     }
 
     _render(ctx) {
         if (this.invincibility % 10 > 5) return;
-        
-        let offsetX = 0;
-        if (this.stunTimer > 0) {
-            offsetX = Math.sin(Date.now() * 0.05) * 5;
-            ctx.filter = "grayscale(100%)";
-        }
-
         ctx.save();
-        ctx.translate(offsetX, 0);
         ctx.scale(this.scaleX, this.scaleY);
         ctx.fillStyle = "#2ecc71";
         ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
@@ -129,11 +113,10 @@ export class Player extends Character {
         ctx.restore();
 
         ctx.save();
-        ctx.translate(offsetX, -10);
+        ctx.translate(0, -10);
         ctx.rotate(this.armAngle - this.angle);
         ctx.fillStyle = "#e67e22";
         ctx.fillRect(0, -5, 38, 8);
         ctx.restore();
-        ctx.filter = "none";
     }
 }

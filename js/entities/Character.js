@@ -19,27 +19,30 @@ export class Character extends Entity {
         
         const groundY = terrain.getHeight(this.x);
         const feetY = this.y + this.height / 2;
+        const slopeThreshold = 40; 
 
-        // Gestion de la chute dans les trous
         if (groundY > terrain.baseHeight + 200) {
             this.isFallingInHole = true;
-            this.isGrounded = false;
         } else {
             this.isFallingInHole = false;
+        }
+
+        if (feetY > groundY + slopeThreshold) {
+            this.x -= this.vx; 
+            this.vx = 0;
+        }
+        else if (feetY >= groundY - 10 && this.vy >= 0) {
+            this.y = groundY - this.height / 2;
+            this.vy = 0;
+            this.isGrounded = true;
             
-            // Résolution de collision : On ne corrige la position que si l'entité pénètre le sol
-            // Cela remplace le "snap" brutal qui causait le mouvement saccadé
-            if (feetY > groundY) {
-                this.y = groundY - this.height / 2;
-                if (this.vy > 0) this.vy = 0;
-                this.isGrounded = true;
-                
-                // Adaptation de l'angle à la pente pour l'aspect visuel
-                const slope = terrain.getSlopeAngle(this.x);
-                this.angle += (slope - this.angle) * 0.1;
-            } else {
-                this.isGrounded = false;
-            }
+            const slope = terrain.getSlopeAngle(this.x);
+            this.angle += (slope - this.angle) * 0.1;
+        }
+        else {
+            this.isGrounded = false;
+            const targetAngle = this.vx * 0.03;
+            this.angle += (targetAngle - this.angle) * 0.05;
         }
 
         this.scaleX += (1 - this.scaleX) * 0.15;

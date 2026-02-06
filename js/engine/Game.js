@@ -94,12 +94,12 @@ export class Game {
     checkCollisions() {
         if (this.gameOver) return;
 
-        // --- CORRECTION BUG : Impossible de capturer un zombie caché ou qui regarde ---
+        // Collision Projectiles - Zombies
         this.projectiles.forEach(p => {
             if (!p.active || p.connectedZombie || p.isStuck) return;
             this.entities.forEach(z => {
                 if (z instanceof Zombie) {
-                    // AJOUT : Vérification stricte des états capturables
+                    // Vérification que le zombie est vulnérable
                     const isCapturable = z.state !== Zombie.STATES.HIDDEN && 
                                          z.state !== Zombie.STATES.PEEKING && 
                                          z.state !== Zombie.STATES.CAPTURED;
@@ -116,6 +116,7 @@ export class Game {
             });
         });
 
+        // Collision Joueur - Zombies
         this.entities.forEach(z => {
             if (z instanceof Zombie) {
                 const distToPlayer = Math.sqrt((this.player.x - z.x)**2 + (this.player.y - z.y)**2);
@@ -129,12 +130,14 @@ export class Game {
                     this.player.vy = -5;
                 }
                 
+                // Zombie tombe dans un trou
                 if (z.isFallingInHole && z.y > this.terrain.baseHeight + 150) {
                     z.active = false;
                     this.player.money -= 10;
                     this.addFloatingText("-$10", z.x, z.y - 100, "#e74c3c");
                 }
                 
+                // Zombie capturé ou enfui
                 if (z.state === 'CAPTURED') {
                     const dist = Math.sqrt((z.x - this.player.x)**2 + (z.y - this.player.y)**2);
                     if (dist < 50) {
@@ -153,6 +156,7 @@ export class Game {
             }
         });
 
+        // Mort du joueur dans un trou
         if (this.player.isFallingInHole && this.player.y > this.terrain.baseHeight + 150) {
             this.player.lives--;
             if (this.player.lives > 0) {
@@ -166,11 +170,13 @@ export class Game {
             }
         }
 
+        // Game Over
         if (this.player.lives <= 0 && !this.gameOver) {
             this.gameOver = true;
             setTimeout(() => location.reload(), 2000);
         }
 
+        // Collision Joueur - Obstacles (Rochers, etc.)
         this.obstacles.forEach(o => {
             const overlapX = (this.player.width + o.width) / 2 - Math.abs(this.player.x - o.x);
             const overlapY = (this.player.height + o.height) / 2 - Math.abs(this.player.y - o.y);
@@ -190,29 +196,8 @@ export class Game {
             }
         });
 
-        const checkDist = 18;
-        const leftWallY = this.terrain.getHeight(this.player.x - checkDist);
-        const rightWallY = this.terrain.getHeight(this.player.x + checkDist);
-        const pFeetY = this.player.y + this.player.height / 2;
-
-        if (!this.player.isFallingInHole) {
-            if (leftWallY < pFeetY - 15) { this.player.x += 2; this.player.vx = 0; }
-            if (rightWallY < pFeetY - 15) { this.player.x -= 2; this.player.vx = 0; }
-        }
-
-        this.terrain.holes.forEach(hole => {
-            if (this.player.y > this.terrain.baseHeight + 10) {
-                const playerLeft = this.player.x - this.player.width / 2;
-                const playerRight = this.player.x + this.player.width / 2;
-                if (this.player.x < hole.x && playerRight > hole.x) {
-                    this.player.x = hole.x - this.player.width / 2;
-                    this.player.vx = 0;
-                } else if (this.player.x > hole.x + hole.width && playerLeft < hole.x + hole.width) {
-                    this.player.x = hole.x + hole.width + this.player.width / 2;
-                    this.player.vx = 0;
-                }
-            }
-        });
+        // NOTE : J'ai supprimé ici la logique manuelle de "checkDist" et "terrain.holes.forEach"
+        // car la nouvelle physique de Character.js gère désormais les murs et les chutes correctement.
     }
 
     _cleanArrays(deleteThreshold) {
