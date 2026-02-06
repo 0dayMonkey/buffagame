@@ -1,7 +1,7 @@
 import { Entity } from './Entity.js';
 
 export class Projectile extends Entity {
-    constructor(x, y, angle, power) {
+    constructor(x, y, angle, power, range) {
         super(x, y, 25, 6);
         this.angle = angle;
         this.vx = Math.cos(angle) * power;
@@ -12,6 +12,8 @@ export class Projectile extends Entity {
         this.connectedZombie = null;
         this.isStuck = false;
         this.stuckTimer = 0;
+        this.maxLife = range || 60;
+        this.life = 0;
     }
 
     update(dt, canvas, terrain) {
@@ -25,8 +27,15 @@ export class Projectile extends Entity {
             if (this.stuckTimer > 30) this.active = false;
             return;
         }
+
+        this.life++;
+        if (this.life > this.maxLife) {
+            this.active = false;
+        }
+
         super.update(dt);
         this.angle = Math.atan2(this.vy, this.vx);
+        
         if (terrain) {
             const groundY = terrain.getHeight(this.x);
             if (this.y >= groundY && !this.isStuck) {
@@ -36,7 +45,8 @@ export class Projectile extends Entity {
                 this.vy = 0;
             }
         }
-        if (this.x < -1000 || this.x > this.x + 5000 || (canvas && this.y > canvas.height + 1000)) {
+        
+        if (this.x < -2000 || this.x > this.x + 10000) {
             this.active = false;
         }
     }

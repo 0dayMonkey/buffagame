@@ -1,21 +1,18 @@
 export class InputHandler {
     constructor(canvas) {
         this.keys = [];
-        this.mouse = { x: 0, y: 0, pressed: false };
+        this.mouse = { x: 0, y: 0, pressed: false, click: false };
 
         window.addEventListener('keydown', e => {
-            if ((e.code === 'ArrowUp' || 
-                 e.code === 'ArrowDown' || 
-                 e.code === 'ArrowLeft' || 
-                 e.code === 'ArrowRight' || 
-                 e.code === 'KeyW' || 
-                 e.code === 'KeyA' || 
-                 e.code === 'KeyS' || 
-                 e.code === 'KeyD' || 
-                 e.code === 'Space' || 
-                 e.code === 'KeyE' || 
-                 e.code === 'KeyF') // AJOUT DE LA TOUCHE F
-                 && this.keys.indexOf(e.code) === -1) {
+            const validKeys = [
+                'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+                'KeyW', 'KeyA', 'KeyS', 'KeyD',
+                'Space', 'KeyE', 'KeyF', 'KeyP', 'KeyU',
+                'Digit1', 'Digit2', 'Digit3', 'Digit4', 
+                'Digit5', 'Digit6', 'Digit7', 'Digit8'
+            ];
+            
+            if (validKeys.includes(e.code) && this.keys.indexOf(e.code) === -1) {
                 this.keys.push(e.code);
             }
         });
@@ -27,15 +24,29 @@ export class InputHandler {
 
         canvas.addEventListener('mousemove', e => {
             const rect = canvas.getBoundingClientRect();
-            this.mouse.x = e.clientX - rect.left;
-            this.mouse.y = e.clientY - rect.top;
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            this.mouse.x = (e.clientX - rect.left) * scaleX;
+            this.mouse.y = (e.clientY - rect.top) * scaleY;
         });
 
-        canvas.addEventListener('mousedown', () => { this.mouse.pressed = true; });
+        canvas.addEventListener('mousedown', () => { 
+            this.mouse.pressed = true; 
+            this.mouse.click = true; 
+        });
+        
         window.addEventListener('mouseup', () => { this.mouse.pressed = false; });
     }
 
     isPressed(keyCode) {
         return this.keys.indexOf(keyCode) !== -1;
+    }
+
+    getClick() {
+        if (this.mouse.click) {
+            this.mouse.click = false;
+            return true;
+        }
+        return false;
     }
 }

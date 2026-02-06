@@ -9,6 +9,7 @@ import { Terrain } from '../entities/Terrain.js';
 import { Obstacle } from '../entities/Obstacle.js';
 import { LuckyBlock } from '../entities/LuckyBlock.js';
 import { Coin } from '../entities/Coin.js';
+import { UpgradeManager } from './UpgradeManager.js';
 
 export class Game {
     constructor(canvasId) {
@@ -38,6 +39,8 @@ export class Game {
         this.player = new Player(200, this.terrain.getHeight(200) - 50); 
         this.entities.push(this.player);
         
+        this.upgradeManager = new UpgradeManager(this);
+
         this.generateMapSegment(0);
         window.addEventListener('resize', () => this.handleResize());
 
@@ -57,36 +60,14 @@ export class Game {
         `;
         div.innerHTML = `
             <h3 style="margin: 0 0 10px 0; text-align:center; border-bottom: 1px solid #0f0">DEV CONSOLE</h3>
-            
-            <label>Vitesse Joueur: <span id="speedVal">0.6</span></label><br>
-            <input type="range" min="0.1" max="2.0" step="0.1" value="0.6" id="devSpeed"><br><br>
-            
-            <label>Distance (TP):</label><br>
-            <input type="number" id="devDist" value="0" style="width: 60px"> 
-            <button id="btnTp">TP</button><br><br>
-            
             <button id="btnAddMoney" style="width:100%; color: black; font-weight:bold">+ $1000</button><br><br>
-            
             <label><input type="checkbox" id="devGod"> God Mode</label>
         `;
         document.body.appendChild(div);
 
-        document.getElementById('devSpeed').addEventListener('input', (e) => {
-            this.player.speed = parseFloat(e.target.value);
-            document.getElementById('speedVal').innerText = this.player.speed;
-        });
         document.getElementById('btnAddMoney').addEventListener('click', () => {
-            this.player.money += 1000;
-            this.addFloatingText("+$1000 (DEV)", this.player.x, this.player.y - 50, "#0f0");
-        });
-        document.getElementById('btnTp').addEventListener('click', () => {
-            const dist = parseInt(document.getElementById('devDist').value) * 100;
-            this.player.x = dist;
-            this.cameraX = dist - 300;
-            this.player.y = this.terrain.getHeight(dist) - 100;
-            this.player.vx = 0;
-            this.lastSpotX = dist + 500;
-            this.generateMapSegment(this.lastSpotX);
+            this.player.money += 100000;
+            this.addFloatingText("+$100000 (DEV)", this.player.x, this.player.y - 50, "#0f0");
         });
         document.getElementById('devGod').addEventListener('change', (e) => {
             this.player.invincibility = e.target.checked ? 9999999 : 0;
@@ -96,6 +77,14 @@ export class Game {
     _toggleDevMenu() {
         const el = document.getElementById('devMenu');
         el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    triggerGoldenBrain() {
+        this.entities.forEach(e => {
+            if (e instanceof Zombie && e.active) {
+                e.forceLure(this.player, this.terrain);
+            }
+        });
     }
 
     initCanvas() {
@@ -212,10 +201,18 @@ export class Game {
             }
         });
 
+        const magnetRadius = this.player.getMagnetRadius();
         this.coins.forEach(c => {
             if (!c.active) return;
             
             const dist = Math.sqrt((this.player.x - c.x)**2 + (this.player.y - c.y)**2);
+            
+            if (dist < magnetRadius) {
+                const angle = Math.atan2(this.player.y - c.y, this.player.x - c.x);
+                c.vx += Math.cos(angle) * 1.5;
+                c.vy += Math.sin(angle) * 1.5;
+            }
+
             if (dist < 40) {
                 c.active = false;
                 this.player.money += c.value;
@@ -296,6 +293,9 @@ export class Game {
 
     update(dt) {
         if (this.gameOver) return;
+        
+        this.upgradeManager.update(this.input);
+
         const targetX = this.player.x - this.canvas.width * 0.3;
         if (targetX > this.cameraX) {
             this.cameraX += (targetX - this.cameraX) * 0.1;
@@ -370,6 +370,7 @@ export class Game {
         this.entities.forEach(e => e.draw(this.ctx));
         this.texts.forEach(t => t.draw(this.ctx));
         this.ctx.restore(); 
+        
         this._renderUI();
         if (this.gameOver) this._renderGameOver();
     }
@@ -385,6 +386,8 @@ export class Game {
         this.ctx.fillStyle = "#bdc3c7";
         this.ctx.fillText("DISTANCE: " + Math.floor(this.player.x / 100) + "m", 30, 115);
         
+        this.upgradeManager.draw(this.ctx);
+
         this.ctx.font = "10px monospace";
         this.ctx.fillStyle = "rgba(255,255,255,0.3)";
         this.ctx.fillText("Dev: [P]", this.canvas.width - 50, 20);

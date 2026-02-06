@@ -9,15 +9,47 @@ export class Player extends Character {
         this.jetpackThrust = -0.58; 
         this.jumpForce = -10;
         this.wasJumpPressed = false;
+        
         this.charge = 0;
-        this.maxCharge = 30;
         this.isCharging = false;
+        this.maxCharge = 30;
+        
         this.fuel = 100;
+        this.maxFuelBase = 100;
         this.maxFuel = 100;
+        
         this.money = 0;
         this.canDropBrain = true;
         this.lives = 3;
+        this.maxLives = 5;
         this.invincibility = 0;
+
+        this.stats = {
+            magnet:  { lvl: 0, max: 8, cost: 150, name: "Magnet",     color: "#9b59b6" },
+            speed:   { lvl: 0, max: 8, cost: 150, name: "Movement",   color: "#3498db" },
+            jetpack: { lvl: 0, max: 8, cost: 150, name: "Fuel Tank",  color: "#2ecc71" },
+            charge:  { lvl: 0, max: 8, cost: 150, name: "Reload",     color: "#f1c40f" },
+            pull:    { lvl: 0, max: 8, cost: 150, name: "Harpoon Str",color: "#e74c3c" },
+            cable:   { lvl: 0, max: 8, cost: 150, name: "Cable Len",  color: "#e91e63" }
+        };
+    }
+
+    getMagnetRadius() { return 60 + (this.stats.magnet.lvl * 60); }
+    getMoveSpeed() { return 0.6 + (this.stats.speed.lvl * 0.08); }
+    getMaxFuel() { return this.maxFuelBase + (this.stats.jetpack.lvl * 40); }
+    getChargeSpeed() { return 0.5 + (this.stats.charge.lvl * 0.25); }
+    getPullSpeed() { return 13 + (this.stats.pull.lvl * 2.5); }
+    getCableRange() { return 60 + (this.stats.cable.lvl * 15); }
+
+    upgradeStat(key) {
+        const stat = this.stats[key];
+        if (stat && stat.lvl < stat.max && this.money >= stat.cost) {
+            this.money -= stat.cost;
+            stat.lvl++;
+            stat.cost = Math.floor(stat.cost * 1.6);
+            return true;
+        }
+        return false;
     }
 
     update(dt, input, canvas, game, terrain) {
@@ -25,11 +57,15 @@ export class Player extends Character {
 
         const moveLeft = input.isPressed('KeyA') || input.isPressed('ArrowLeft');
         const moveRight = input.isPressed('KeyD') || input.isPressed('ArrowRight');
+        
+        const currentSpeed = this.getMoveSpeed();
 
-        if (moveLeft) this.vx -= this.speed;
-        if (moveRight) this.vx += this.speed;
+        if (moveLeft) this.vx -= currentSpeed;
+        if (moveRight) this.vx += currentSpeed;
         
         const isJumpInput = input.isPressed('Space') || input.isPressed('KeyW');
+        const currentMaxFuel = this.getMaxFuel();
+        this.maxFuel = currentMaxFuel;
 
         if (isJumpInput) {
             if (this.isGrounded && !this.wasJumpPressed) {
@@ -46,8 +82,8 @@ export class Player extends Character {
             this.wasJumpPressed = true;
         } else {
             this.wasJumpPressed = false;
-            if (this.isGrounded && this.fuel < this.maxFuel) {
-                this.fuel += 0.4;
+            if (this.isGrounded && this.fuel < currentMaxFuel) {
+                this.fuel += 0.8;
             }
         }
 
@@ -61,9 +97,13 @@ export class Player extends Character {
         const worldMouseY = input.mouse.y; 
         this.armAngle = Math.atan2(worldMouseY - this.y, worldMouseX - this.x);
 
+        const chargeRate = this.getChargeSpeed();
+
         if (input.mouse.pressed) {
             this.isCharging = true;
-            if (this.charge < this.maxCharge) this.charge += 0.5;
+            if (this.charge < this.maxCharge) {
+                this.charge += chargeRate;
+            }
         } else if (this.isCharging) {
             this.fire(game);
             this.isCharging = false;
@@ -86,7 +126,7 @@ export class Player extends Character {
 
     fire(game) {
         if (game.projectiles.length > 0) return;
-        const p = new Projectile(this.x, this.y - 10, this.armAngle, this.charge + 12);
+        const p = new Projectile(this.x, this.y - 10, this.armAngle, this.charge + 12, this.getCableRange());
         game.projectiles.push(p);
     }
 
@@ -97,11 +137,12 @@ export class Player extends Character {
         ctx.fillStyle = "#2ecc71";
         ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
 
-        if (this.fuel < this.maxFuel) {
+        const currentMaxFuel = this.getMaxFuel();
+        if (this.fuel < currentMaxFuel) {
             ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
             ctx.fillRect(-this.width / 2, -this.height / 2 - 25, this.width, 6);
-            ctx.fillStyle = this.fuel > 20 ? "#3498db" : "#e74c3c";
-            ctx.fillRect(-this.width / 2, -this.height / 2 - 25, (this.fuel / this.maxFuel) * this.width, 6);
+            ctx.fillStyle = this.fuel > currentMaxFuel * 0.2 ? "#3498db" : "#e74c3c";
+            ctx.fillRect(-this.width / 2, -this.height / 2 - 25, (this.fuel / currentMaxFuel) * this.width, 6);
         }
 
         if (this.isCharging) {
