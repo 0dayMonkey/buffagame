@@ -39,7 +39,7 @@ export class Player extends Character {
     getMaxFuel() { return this.maxFuelBase + (this.stats.jetpack.lvl * 40); }
     getChargeSpeed() { return 0.5 + (this.stats.charge.lvl * 0.25); }
     getPullSpeed() { return 13 + (this.stats.pull.lvl * 2.5); }
-    getCableRange() { return 60 + (this.stats.cable.lvl * 15); }
+    getCableRange() { return 35 + (this.stats.cable.lvl * 15); }
 
     upgradeStat(key) {
         const stat = this.stats[key];
@@ -126,7 +126,7 @@ export class Player extends Character {
 
     fire(game) {
         if (game.projectiles.length > 0) return;
-        const p = new Projectile(this.x, this.y - 10, this.armAngle, this.charge + 12, this.getCableRange());
+        const p = new Projectile(this.x, this.y - 10, this.armAngle, this.charge + 12, this.getCableRange(), this);
         game.projectiles.push(p);
     }
 

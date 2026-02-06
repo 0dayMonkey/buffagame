@@ -8,6 +8,7 @@ export class UpgradeManager {
         this.spacing = 5;
         this.opacity = 0.1;
         this.buttons = [];
+        this.prevKeys = {}; 
         
         this.colors = {
             bg: "rgba(0, 0, 0, 0)", 
@@ -40,10 +41,22 @@ export class UpgradeManager {
         const statKeys = ['magnet', 'speed', 'jetpack', 'charge', 'pull', 'cable'];
         
         for(let i = 0; i < statKeys.length; i++) {
-            if (input.isPressed(keys[i])) this.player.upgradeStat(statKeys[i]);
+            const key = keys[i];
+            const isPressed = input.isPressed(key);
+            if (isPressed && !this.prevKeys[key]) {
+                this.player.upgradeStat(statKeys[i]);
+            }
+            this.prevKeys[key] = isPressed;
         }
-        if (input.isPressed('Digit7')) this.buyMedkit();
-        if (input.isPressed('Digit8')) this.buyGoldenBrain();
+
+        const k7 = 'Digit7';
+        if (input.isPressed(k7) && !this.prevKeys[k7]) this.buyMedkit();
+        this.prevKeys[k7] = input.isPressed(k7);
+
+        const k8 = 'Digit8';
+        if (input.isPressed(k8) && !this.prevKeys[k8]) this.buyGoldenBrain();
+        this.prevKeys[k8] = input.isPressed(k8);
+
 
         if (input.getClick() && this.opacity > 0.3) {
             this.buttons.forEach(btn => {
