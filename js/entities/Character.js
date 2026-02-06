@@ -39,8 +39,4 @@ export class Character extends Entity {
         this.scaleX += (1 - this.scaleX) * 0.15;
         this.scaleY += (1 - this.scaleY) * 0.15;
     }
-
-    checkBounds(canvas) {
-        if (this.x < 0) this.x = 0;
-    }
 }
