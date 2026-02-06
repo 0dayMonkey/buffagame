@@ -6,7 +6,7 @@ export class Coin extends Entity {
         this.vx = (Math.random() - 0.5) * 10;
         this.vy = -5 - Math.random() * 5;
         this.value = 10;
-        this.bounciness = 0.6;
+        this.bounciness = 0.1;
         this.active = true;
     }
 

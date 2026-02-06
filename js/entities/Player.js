@@ -91,8 +91,13 @@ export class Player extends Character {
             }
         }
 
-        if (input.isPressed('KeyE') && this.canDropBrain && this.isGrounded) {
-            game.brains.push(new Brain(this.x, this.y));
+        if (input.isPressed('KeyE') && this.canDropBrain) {
+            const b = new Brain(this.x, this.y);
+            // Le cerveau hérite de la vitesse du joueur pour un drop réaliste
+            b.vx = this.vx + (Math.random() - 0.5) * 2;
+            b.vy = this.vy;
+            game.brains.push(b);
+            
             this.canDropBrain = false;
             setTimeout(() => this.canDropBrain = true, 2000);
         }

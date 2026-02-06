@@ -11,6 +11,7 @@ import { LuckyBlock } from '../entities/LuckyBlock.js';
 import { Coin } from '../entities/Coin.js';
 import { UpgradeManager } from './UpgradeManager.js';
 import { ParticleSystem } from './ParticleSystem.js';
+import { Background } from './Background.js';
 
 export class Game {
     constructor(canvasId) {
@@ -46,6 +47,7 @@ export class Game {
         
         this.upgradeManager = new UpgradeManager(this);
         this.particleSystem = new ParticleSystem();
+        this.background = new Background(this.canvas.width, this.canvas.height);
 
         this.generateMapSegment(0);
         window.addEventListener('resize', () => this.handleResize());
@@ -105,6 +107,12 @@ export class Game {
         if (currentRatio > this.ratio) this.canvas.width = this.canvas.height * this.ratio;
         else this.canvas.height = this.canvas.width / this.ratio;
         if (this.terrain) this.terrain.baseHeight = this.canvas.height - 100;
+        
+        if (this.background) {
+            this.background.width = this.canvas.width;
+            this.background.height = this.canvas.height;
+        }
+        
         this.ctx.imageSmoothingEnabled = false; 
     }
 
@@ -310,6 +318,7 @@ export class Game {
         
         this.upgradeManager.update(this.input);
         this.particleSystem.update();
+        if (this.background) this.background.update(this.cameraX);
 
         if (this.shakeTimer > 0) {
             this.shakeTimer--;
@@ -373,6 +382,10 @@ export class Game {
 
     render() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Background avant tout
+        if (this.background) this.background.draw(this.ctx);
+
         this.ctx.save();
         
         let shakeOffsetX = 0;
